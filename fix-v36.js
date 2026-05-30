@@ -1,16 +1,11 @@
 // v36: Korrigerar svärd/kedja i Sågverk / packning.
 // v36.1: Tar bort onödiga blockningssteg när sidobitarna redan frigör blockets fyra sidor.
 // v36.2: När stocken ligger på osågad rund sida ska stöd 1/stöd 2 få olika höjd vid avsmalnande stock.
+// v36.3: När stocken ligger på rund/osågad sida ska sågbilden också lägga rundbotten mot bädden.
 
 function v36RoundContactForStep(step) {
   if (!step) return false;
   const rot = ((step.rotationValue || 0) % 360 + 360) % 360;
-
-  // I nuvarande sidobitsflöde körs två snitt per sida:
-  // 0°   = undersidan mot bädd är fortfarande rundstock -> olika stödhöjd
-  // 180° = den först sågade plana sidan ligger mot bädd -> samma stödhöjd
-  // 90°  = osågad rund sida ligger mot bädd -> olika stödhöjd
-  // 270° = sidan som sågats vid 90° ligger mot bädd -> samma stödhöjd
   return rot === 0 || rot === 90;
 }
 
@@ -25,7 +20,6 @@ function v36ApplySupportHeightModel(plan) {
     const avg = (h1 + h2) / 2;
 
     if (v36RoundContactForStep(s)) {
-      // Höjdskillnaden mellan stöden är radieskillnaden. Runt medelvärdet blir det halva radieskillnaden åt varje håll.
       const halfSpread = radiusDiffAcrossSupports / 2;
       s.rootSupportHeight = avg + halfSpread;
       s.topSupportHeight = avg - halfSpread;
@@ -33,7 +27,6 @@ function v36ApplySupportHeightModel(plan) {
       s.supportHeightDiff = s.rootSupportHeight - s.topSupportHeight;
       s.note = (s.note || "") + (s.note?.includes("Rund sida mot bädd") ? "" : " • Rund sida mot bädd: olika stödvärden");
     } else {
-      // Plan sågad yta mot bädd: båda stöd ska ha samma värde.
       s.rootSupportHeight = avg;
       s.topSupportHeight = avg;
       s.supportHeightAverage = avg;
@@ -43,7 +36,50 @@ function v36ApplySupportHeightModel(plan) {
   return plan;
 }
 
-// Spara originalplanbyggaren och filtrera bort kärn-blockningssteg när de inte behövs.
+// Beräkna lägsta punkt för kvarvarande stock efter rotation och tidigare bortsågade zoner.
+// Returnerar mm i samma koordinatsystem som remainingPackingBoundsWithSlabCuts.
+function v36RemainingBodyBottomWithCuts(radiusMm, cuts, rotationValue) {
+  const theta = rotationToRadians(rotationValue || 0);
+  let maxY = -Infinity;
+  const samples = 1440;
+
+  function keep(x, y) {
+    return typeof pointKeptBySlabCuts === "function" ? pointKeptBySlabCuts(x, y, cuts) : true;
+  }
+
+  function add(x, y) {
+    if (!keep(x, y)) return;
+    const p = rotatePoint(x, y, theta);
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  // Cirkelranden räcker i praktiken för rundsidan. Snittlinjer läggs också till för stabilitet.
+  for (let i = 0; i < samples; i++) {
+    const a = (i / samples) * Math.PI * 2;
+    add(Math.cos(a) * radiusMm, Math.sin(a) * radiusMm);
+  }
+
+  for (const c of (cuts || [])) {
+    const val = c.value;
+    if (c.axis === "y" && Math.abs(val) <= radiusMm) {
+      const xh = Math.sqrt(Math.max(0, radiusMm * radiusMm - val * val));
+      for (let i = 0; i <= 120; i++) {
+        const x = -xh + (2 * xh * i) / 120;
+        add(x, val);
+      }
+    }
+    if (c.axis === "x" && Math.abs(val) <= radiusMm) {
+      const yh = Math.sqrt(Math.max(0, radiusMm * radiusMm - val * val));
+      for (let i = 0; i <= 120; i++) {
+        const y = -yh + (2 * yh * i) / 120;
+        add(val, y);
+      }
+    }
+  }
+
+  return Number.isFinite(maxY) ? maxY : radiusMm;
+}
+
 if (typeof buildSawmillCutPlan === "function" && !window.__v36PlanFilterInstalled) {
   window.__v36PlanFilterInstalled = true;
   const originalBuildSawmillCutPlan = buildSawmillCutPlan;
@@ -54,8 +90,6 @@ if (typeof buildSawmillCutPlan === "function" && !window.__v36PlanFilterInstalle
     const sideSteps = plan.filter(s => s.kind === "side").length;
     const sideNames = new Set(plan.filter(s => s.kind === "side").map(s => s.side));
 
-    // Om vi redan har ytterdel + planksnitt på alla fyra sidor är centrumblocket redan färdigsågat.
-    // Då ska vi inte lägga till ytterligare fyra steg för att "blocka kärnan".
     if (slabSteps >= 4 && sideSteps >= 4 && sideNames.size >= 4) {
       plan = plan.filter(s => s.kind !== "center");
       plan.forEach((s, i) => { s.step = i + 1; });
@@ -80,20 +114,21 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
 
   const planStep = sawmillCutPlan && sawmillCutPlan[currentStepIndex] ? sawmillCutPlan[currentStepIndex] : sawmillCutPlan?.[0];
   const theta = planStep ? rotationToRadians(planStep.rotationValue || 0) : 0;
-
   const slabCuts = completedSlabCuts(sawmillCutPlan, currentStepIndex);
-  const supportBottom = remainingPackingBoundsWithSlabCuts(
+
+  const packingBottom = remainingPackingBoundsWithSlabCuts(
     packingLayout,
     sawmillCutPlan,
     currentStepIndex,
     planStep ? planStep.rotationValue : 0
   );
+  const bodyBottom = v36RemainingBodyBottomWithCuts(geom.designDiameter / 2, slabCuts, planStep ? planStep.rotationValue : 0);
+  const supportBottom = v36RoundContactForStep(planStep) ? bodyBottom : packingBottom;
   const yShift = bedY - supportBottom * scale;
 
   ctx.save();
   ctx.translate(cx, cy);
 
-  // Kroppen/stocken roteras och flyttas ned till bädden efter att tidigare snitt tagits bort.
   ctx.save();
   ctx.translate(0, yShift);
   ctx.rotate(theta);
@@ -132,7 +167,6 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
 
   ctx.restore();
 
-  // Bädden är fast och svärdet ska alltid vara horisontellt över bädden.
   ctx.strokeStyle = "#111827";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -159,10 +193,7 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const action = planStep.kind === "slab"
-      ? "ta bort ytterdel"
-      : (planStep.kind === "side" ? "frigör" : "blocka");
-
+    const action = planStep.kind === "slab" ? "ta bort ytterdel" : (planStep.kind === "side" ? "frigör" : "blocka");
     ctx.fillStyle = "#ef4444";
     ctx.font = "bold 16px system-ui";
     ctx.textAlign = "center";
@@ -172,12 +203,9 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x1, bladeY);
-    ctx.lineTo(x1, bedY);
-    ctx.moveTo(x1-8, bladeY);
-    ctx.lineTo(x1+8, bladeY);
-    ctx.moveTo(x1-8, bedY);
-    ctx.lineTo(x1+8, bedY);
+    ctx.moveTo(x1, bladeY); ctx.lineTo(x1, bedY);
+    ctx.moveTo(x1-8, bladeY); ctx.lineTo(x1+8, bladeY);
+    ctx.moveTo(x1-8, bedY); ctx.lineTo(x1+8, bedY);
     ctx.stroke();
     ctx.fillStyle = "#ef4444";
     ctx.font = "bold 13px system-ui";
@@ -189,12 +217,9 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     ctx.lineWidth = 2;
     ctx.setLineDash([5,5]);
     ctx.beginPath();
-    ctx.moveTo(x2, bladeY);
-    ctx.lineTo(x2, bedY);
-    ctx.moveTo(x2-8, bladeY);
-    ctx.lineTo(x2+8, bladeY);
-    ctx.moveTo(x2-8, bedY);
-    ctx.lineTo(x2+8, bedY);
+    ctx.moveTo(x2, bladeY); ctx.lineTo(x2, bedY);
+    ctx.moveTo(x2-8, bladeY); ctx.lineTo(x2+8, bladeY);
+    ctx.moveTo(x2-8, bedY); ctx.lineTo(x2+8, bedY);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#2563eb";
@@ -204,11 +229,7 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     ctx.fillStyle = "#475569";
     ctx.font = "13px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(
-      "Tidigare snitt är borttagna; kvarvarande kropp ligger mot bädden. Svärdet visas som kedjehöjd över bädd.",
-      0,
-      bedY + 44
-    );
+    ctx.fillText("Tidigare snitt är borttagna; kvarvarande kropp ligger mot bädden. Svärdet visas som kedjehöjd över bädd.", 0, bedY + 44);
   }
 
   ctx.restore();
