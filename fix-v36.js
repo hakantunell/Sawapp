@@ -1,12 +1,54 @@
 // v36: Korrigerar svärd/kedja i Sågverk / packning.
 // v36.1: Tar bort onödiga blockningssteg när sidobitarna redan frigör blockets fyra sidor.
+// v36.2: När stocken ligger på osågad rund sida ska stöd 1/stöd 2 få olika höjd vid avsmalnande stock.
+
+function v36RoundContactForStep(step) {
+  if (!step) return false;
+  const rot = ((step.rotationValue || 0) % 360 + 360) % 360;
+
+  // I nuvarande sidobitsflöde körs två snitt per sida:
+  // 0°   = undersidan mot bädd är fortfarande rundstock -> olika stödhöjd
+  // 180° = den först sågade plana sidan ligger mot bädd -> samma stödhöjd
+  // 90°  = osågad rund sida ligger mot bädd -> olika stödhöjd
+  // 270° = sidan som sågats vid 90° ligger mot bädd -> samma stödhöjd
+  return rot === 0 || rot === 90;
+}
+
+function v36ApplySupportHeightModel(plan) {
+  if (!plan || !plan.length || typeof values !== "function") return plan;
+  const v = values();
+  const radiusDiffAcrossSupports = ((v.rootDiameter || 0) - (v.topDiameter || 0)) / 2;
+
+  for (const s of plan) {
+    const h1 = Number.isFinite(s.rootSupportHeight) ? s.rootSupportHeight : (s.bladeToBed || 0);
+    const h2 = Number.isFinite(s.topSupportHeight) ? s.topSupportHeight : (s.bladeToBed || 0);
+    const avg = (h1 + h2) / 2;
+
+    if (v36RoundContactForStep(s)) {
+      // Höjdskillnaden mellan stöden är radieskillnaden. Runt medelvärdet blir det halva radieskillnaden åt varje håll.
+      const halfSpread = radiusDiffAcrossSupports / 2;
+      s.rootSupportHeight = avg + halfSpread;
+      s.topSupportHeight = avg - halfSpread;
+      s.supportHeightAverage = avg;
+      s.supportHeightDiff = s.rootSupportHeight - s.topSupportHeight;
+      s.note = (s.note || "") + (s.note?.includes("Rund sida mot bädd") ? "" : " • Rund sida mot bädd: olika stödvärden");
+    } else {
+      // Plan sågad yta mot bädd: båda stöd ska ha samma värde.
+      s.rootSupportHeight = avg;
+      s.topSupportHeight = avg;
+      s.supportHeightAverage = avg;
+      s.supportHeightDiff = 0;
+    }
+  }
+  return plan;
+}
 
 // Spara originalplanbyggaren och filtrera bort kärn-blockningssteg när de inte behövs.
 if (typeof buildSawmillCutPlan === "function" && !window.__v36PlanFilterInstalled) {
   window.__v36PlanFilterInstalled = true;
   const originalBuildSawmillCutPlan = buildSawmillCutPlan;
   buildSawmillCutPlan = function(...args) {
-    const plan = originalBuildSawmillCutPlan.apply(this, args) || [];
+    let plan = originalBuildSawmillCutPlan.apply(this, args) || [];
 
     const slabSteps = plan.filter(s => s.kind === "slab").length;
     const sideSteps = plan.filter(s => s.kind === "side").length;
@@ -15,12 +57,11 @@ if (typeof buildSawmillCutPlan === "function" && !window.__v36PlanFilterInstalle
     // Om vi redan har ytterdel + planksnitt på alla fyra sidor är centrumblocket redan färdigsågat.
     // Då ska vi inte lägga till ytterligare fyra steg för att "blocka kärnan".
     if (slabSteps >= 4 && sideSteps >= 4 && sideNames.size >= 4) {
-      const filtered = plan.filter(s => s.kind !== "center");
-      filtered.forEach((s, i) => { s.step = i + 1; });
-      return filtered;
+      plan = plan.filter(s => s.kind !== "center");
+      plan.forEach((s, i) => { s.step = i + 1; });
     }
 
-    return plan;
+    return v36ApplySupportHeightModel(plan);
   };
 }
 
