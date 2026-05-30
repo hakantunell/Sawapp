@@ -1,1 +1,63 @@
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sawapp</title></head><body><h1>Sawapp</h1><p>GitHub Pages är initierad. Jag laddar upp full version som nästa steg.</p></body></html>
+<!doctype html>
+<html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sawmill Planner – Custom v35</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="topbar"><div><h1>Sawmill Planner – Custom Edition</h1><p>Flikbaserad version med separata såginställningar.</p></div><div class="version">v35.0</div></header>
+<nav class="tabs">
+<button class="tab active" data-tab="stockTab">Stock</button><button class="tab" data-tab="dimensionsTab">Dimensioner</button><button class="tab" data-tab="planTab">Sågplan</button><button class="tab" data-tab="bigTab">Storskärm</button><button class="tab" data-tab="settingsTab">Inställningar</button>
+</nav>
+<main class="tabLayout">
+<section id="stockTab" class="tabPage active"><div class="twoCol">
+<section class="panel"><h2>Stock</h2><p class="hint">Värden som mäts för varje stock.</p><div class="grid2">
+<label>Diameter stöd 1 <input id="rootDiameter" type="number" value="320" step="1"><span>mm</span></label>
+<label>Diameter stöd 2 <input id="topDiameter" type="number" value="300" step="1"><span>mm</span></label>
+          <label>Rotända, valfritt
+            <input id="rootEndDiameter" type="number" value="" step="1" placeholder="valfritt">
+            <span>mm, används för mer noggrann avsmalning</span>
+          </label>
+          <label>Toppända, valfritt
+            <input id="topEndDiameter" type="number" value="" step="1" placeholder="valfritt">
+            <span>mm, används för mer noggrann avsmalning</span>
+          </label>
+<label>Stocklängd <input id="logLength" type="number" value="4500" step="10"><span>mm</span></label>
+<label>Krokighet / snöravvikelse <input id="sweep" type="number" value="10" step="1"><span>mm</span></label>
+<label>Barktjocklek <input id="bark" type="number" value="12" step="1"><span>mm</span></label>
+</div></section>
+<section class="panel"><h2>Beräkning</h2><div class="metrics metrics-compact">
+<div class="metric"><span>Designdiameter</span><strong id="designDiameter">–</strong></div><div class="metric"><span>Användbar diameter</span><strong id="usableDiameter">–</strong></div><div class="metric"><span>Utbyte</span><strong id="yieldPct">–</strong></div><div class="metric"><span>Sågad area</span><strong id="sawnArea">–</strong></div><div class="metric"><span>Stockvolym</span><strong id="logVolume">–</strong></div>
+</div><table class="smallTable"><tbody id="calcDetails"></tbody></table></section>
+</div></section>
+<section id="dimensionsTab" class="tabPage"><section class="panel widePanel"><h2>Dimensioner</h2><p class="hint">Prioriteten styrs av ordningen. Vildmarkspanel är en kryssruta per rad.</p>
+<div class="dimensionHeader"><span>Prio</span><span></span><span></span><span>Aktiv</span><span>Typ</span><span>Tjocklek/Höjd</span><span>Bredd/Minbredd</span><span>Vankant</span><span>Vildmark</span><span>Resultat</span></div>
+<div id="dimensionList"></div><div class="toolbar"><button id="addDimension" class="secondary">Lägg till dimension</button><button id="presetTimber" class="secondary">Timmerhus 190/170 + plank/panel</button></div>
+</section></section>
+<section id="planTab" class="tabPage"><div class="twoCol planGrid"><section class="panel"><h2>Sågbild</h2><canvas id="sawCanvas" width="780" height="620"></canvas><div class="legend"><span><i class="bark"></i>Bark</span><span><i class="chain"></i>Svärd/kedja</span><span><i class="bed"></i>Bädd/stockstöd</span><span><i class="block"></i>Block</span></div></section>
+<section class="panel"><h2>Sågordning</h2><div id="sawOrder"></div><h2>Sidoutbyte</h2><div id="sideYield"></div>
+        <h2>Sågvy – stöd 1 / stöd 2</h2>
+        <div id="supportSideView" class="supportSideView">
+          <div class="sawHead">Sågaggregat</div>
+          <div class="supportDiagram">
+            <div class="bladeLine"></div>
+            <div class="logSide"></div>
+            <div class="support support1"></div>
+            <div class="support support2"></div>
+            <div id="support1Label" class="supportLabel support1Label">Stöd 1: –</div>
+            <div id="support2Label" class="supportLabel support2Label">Stöd 2: –</div>
+          </div>
+        </div>
+
+        <h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
+</div></section>
+<section id="bigTab" class="tabPage"><section class="bigDisplay"><div id="bigStep">Steg 1</div><div id="bigHeight">–</div><div id="bigRotation">–</div><div id="bigReference">–</div><div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div></section><button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div></section>
+<section id="settingsTab" class="tabPage"><section class="panel settingsPanel"><h2>Inställningar för såg</h2><p class="hint">Värden som normalt inte ändras för varje stock.</p><div class="grid2">
+<label>Sågmodell <select id="sawModel"><option value="logosol-m7">Logosol M7 / liknande</option><option value="custom">Egen såg</option></select><span>framtida standardvärden</span></label>
+<label>Stödavstånd <input id="supportDistance" type="number" value="2500" step="10"><span>mm</span></label>
+<label>Sågspår / kerf <input id="kerf" type="number" value="6" step="0.5"><span>mm</span></label>
+<label>Kantmarginal <input id="margin" type="number" value="0" step="1"><span>mm</span></label>
+<label>Global vankant (används ej) <input id="cornerWane" type="number" value="0" step="1"><span>vankant anges numera per dimension</span></label>
+<label>Profilradie efter fräsning <input id="profileRadius" type="number" value="0" step="1"><span>mm</span></label>
+<label>Standard rotationsordning <select id="rotationPreset"><option value="standard">Standard: 0° → 90° → 180° → 270°</option><option value="opposite-first">Motstående först: 0° → 180° → 90° → 270°</option><option value="manual">Manuell ordning</option></select></label>
+<label id="manualRotationWrap" class="hidden">Manuell rotation <input id="manualRotation" type="text" value="0,180,90,270"><span>grader kommaseparerat</span></label>
+<label>Optimera för <select id="optimizationMode"><option value="timber">Timmerblock</option><option value="plank">Plank / fri bredd</option><option value="panel">Panel / minbredd</option><option value="mixed">Blandat enligt prioritet</option><option value="sawmill">Sågverk / packning</option></select></label>
+</div></section></section>
+</main><footer>Alla mått i millimeter. Tum = mm / 25,4.</footer><script type="module" src="app.js"></script></body></html>
