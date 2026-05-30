@@ -1,5 +1,28 @@
 // v36: Korrigerar svärd/kedja i Sågverk / packning.
-// app.js körs som klassisk scriptfil i v36 så att denna fil kan ersätta renderPackingCanvas.
+// v36.1: Tar bort onödiga blockningssteg när sidobitarna redan frigör blockets fyra sidor.
+
+// Spara originalplanbyggaren och filtrera bort kärn-blockningssteg när de inte behövs.
+if (typeof buildSawmillCutPlan === "function" && !window.__v36PlanFilterInstalled) {
+  window.__v36PlanFilterInstalled = true;
+  const originalBuildSawmillCutPlan = buildSawmillCutPlan;
+  buildSawmillCutPlan = function(...args) {
+    const plan = originalBuildSawmillCutPlan.apply(this, args) || [];
+
+    const slabSteps = plan.filter(s => s.kind === "slab").length;
+    const sideSteps = plan.filter(s => s.kind === "side").length;
+    const sideNames = new Set(plan.filter(s => s.kind === "side").map(s => s.side));
+
+    // Om vi redan har ytterdel + planksnitt på alla fyra sidor är centrumblocket redan färdigsågat.
+    // Då ska vi inte lägga till ytterligare fyra steg för att "blocka kärnan".
+    if (slabSteps >= 4 && sideSteps >= 4 && sideNames.size >= 4) {
+      const filtered = plan.filter(s => s.kind !== "center");
+      filtered.forEach((s, i) => { s.step = i + 1; });
+      return filtered;
+    }
+
+    return plan;
+  };
+}
 
 function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
   const canvas = $("sawCanvas");
@@ -81,10 +104,6 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
   ctx.fillText("bädd / stockstöd", -outerR-65, bedY+22);
 
   if (planStep) {
-    // RÄTTELSE v36:
-    // Tidigare ritades svärdet mellan plankrektangelns roterade minX/maxX.
-    // Det blir fel efter rotation. Sågen har alltid horisontellt svärd.
-    // Därför ritas linjen från verklig kedjehöjd över bädden.
     const h1 = Number.isFinite(planStep.rootSupportHeight) ? planStep.rootSupportHeight : planStep.bladeToBed;
     const h2 = Number.isFinite(planStep.topSupportHeight) ? planStep.topSupportHeight : planStep.bladeToBed;
     const bladeHeight = ((h1 || 0) + (h2 || 0)) / 2;
@@ -108,7 +127,6 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     ctx.textAlign = "center";
     ctx.fillText(`Aktuellt steg ${planStep.step}: ${action} ${planStep.label}`, 0, -outerR - 18);
 
-    // Visuell måttmarkering. Tvärsnittet visar medelhöjd; tabellen visar stöd 1/stöd 2 exakt.
     const x1 = -outerR - 42;
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
@@ -155,5 +173,4 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
   ctx.restore();
 }
 
-// Rendera om direkt efter att fixen laddats.
 if (typeof update === "function") update();
