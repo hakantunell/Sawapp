@@ -1,13 +1,15 @@
 // src/app.js
 // Steg 1 i refaktoreringen: index.html laddar bara denna fil.
-// Denna bootstrap laddar befintlig huvudkod och temporära fixar i korrekt ordning.
-// Nästa steg blir att flytta logik från app.js till funktionsvisa moduler.
+//
+// Detta är en bootstrap som laddar befintlig huvudkod och temporära fixar i korrekt ordning.
+// Viktigt: sökvägarna nedan är relativa till index.html, inte till denna fil.
+// Nästa steg blir att flytta logik från rotens app.js till funktionsvisa moduler under src/.
 
 (function bootstrapSawapp() {
   const scripts = [
-    "../app.js",
-    "../fix-v36.js",
-    "../fix-v37.js",
+    "app.js",
+    "fix-v36.js",
+    "fix-v37.js",
   ];
 
   function loadScript(src) {
