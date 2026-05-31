@@ -19,6 +19,7 @@
     "src/sawplan.js",
     "fix-v36.js",
     "fix-v37.js",
+    "src/current-step-sync.js",
   ];
 
   function loadScript(src) {
