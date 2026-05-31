@@ -1,14 +1,20 @@
-// v37.3: korrigerar sidobits-snitt med full sågspår/kerf.
+// v37.4: generell kerf-regel för alla sidobits-/planksnitt.
 //
-// När du ställer in sågen mäter du från underkant svärd/kedja ned till stödet.
-// För att få en planka som är 20 mm tjock måste skillnaden mellan yttersnittet
-// och frigöringssnittet vara: planktjocklek + sågspår.
-// Exempel: 20 mm planka + 6 mm sågspår = 26 mm skillnad.
+// Viktig princip:
+// Du mäter såginställningen från underkant svärd/kedja ned till stödet.
+// Därför måste avståndet mellan två snitt som skapar en planka vara:
 //
-// Mål:
-// - När stocken ligger på osågad/rund sida mot stöden: använd två nivåer.
-// - När stocken ligger på redan sågad plan yta mot stöden: behåll v36-höjden.
-// - Steg 1/2 och 5/6 påverkas. Steg 3/4 och 7/8 behåller plan-yte-logiken.
+//   färdig planktjocklek + sågspår/kerf
+//
+// Exempel:
+//   20 mm planka + 6 mm sågspår = 26 mm skillnad mellan inställningarna.
+//
+// Denna fix gör INGA specialregler för specifika steg eller rotationer.
+// Den går igenom sågplanen och hittar varje par:
+//   1) slab / ta bort ytterdel
+//   2) side / frigör planka
+// och sätter höjderna så att yttersnitt och frigöringssnitt alltid skiljer
+// exakt planktjocklek + kerf.
 //
 // Ladda efter app.js och fix-v36.js.
 
@@ -21,12 +27,29 @@ function v37ThicknessFromStep(step) {
 }
 
 function v37Kerf() {
+  const direct = document.getElementById("kerf");
+  if (direct) {
+    const k = Number(direct.value);
+    if (Number.isFinite(k)) return k;
+  }
   try {
     const v = typeof values === "function" ? values() : {};
     return Number(v.kerf || 0);
   } catch (_) {
     return 0;
   }
+}
+
+function v37StepRootHeight(step) {
+  if (Number.isFinite(step?.rootSupportHeight)) return step.rootSupportHeight;
+  if (Number.isFinite(step?.bladeToBed)) return step.bladeToBed;
+  return 0;
+}
+
+function v37StepTopHeight(step) {
+  if (Number.isFinite(step?.topSupportHeight)) return step.topSupportHeight;
+  if (Number.isFinite(step?.bladeToBed)) return step.bladeToBed;
+  return 0;
 }
 
 function v37SetHeights(step, root, top) {
@@ -37,44 +60,44 @@ function v37SetHeights(step, root, top) {
   step.supportHeightDiff = root - top;
 }
 
-function v37IsRoundSideSupport(step) {
-  const rot = ((step?.rotationValue || 0) % 360 + 360) % 360;
-  return rot === 0 || rot === 90;
-}
-
 if (typeof buildSawmillCutPlan === "function" && !window.__v37SideCutHeightInstalled) {
   window.__v37SideCutHeightInstalled = true;
   const previousBuildSawmillCutPlan = buildSawmillCutPlan;
 
   buildSawmillCutPlan = function(...args) {
     const plan = previousBuildSawmillCutPlan.apply(this, args) || [];
-    const kerfAllowance = v37Kerf(); // FULL kerf, inte halv kerf
+    const kerf = v37Kerf();
 
-    for (let i = 0; i < plan.length; i++) {
-      const slab = plan[i];
-      const side = plan[i + 1];
-      if (!slab || !side) continue;
-      if (slab.kind !== "slab" || side.kind !== "side") continue;
-      if (slab.side !== side.side || slab.rotationValue !== side.rotationValue) continue;
-      if (!v37IsRoundSideSupport(slab)) continue;
+    for (let i = 0; i < plan.length - 1; i++) {
+      const outerStep = plan[i];
+      const innerStep = plan[i + 1];
 
-      const t = v37ThicknessFromStep(side) || v37ThicknessFromStep(slab);
-      if (!t) continue;
+      // Generisk regel: ett planksnitt består av ytterdelssnitt följt av frigöringssnitt.
+      if (!outerStep || !innerStep) continue;
+      if (outerStep.kind !== "slab" || innerStep.kind !== "side") continue;
+      if (outerStep.side !== innerStep.side) continue;
+      if (outerStep.rotationValue !== innerStep.rotationValue) continue;
 
-      const innerRoot = Number.isFinite(slab.rootSupportHeight) ? slab.rootSupportHeight : (slab.bladeToBed || 0);
-      const innerTop = Number.isFinite(slab.topSupportHeight) ? slab.topSupportHeight : (slab.bladeToBed || 0);
+      const thickness = v37ThicknessFromStep(innerStep) || v37ThicknessFromStep(outerStep);
+      if (!thickness) continue;
 
-      // Yttersnittet ska ligga planktjocklek + hela sågspåret ovanför frigöringssnittet.
-      const outerRoot = innerRoot + t + kerfAllowance;
-      const outerTop = innerTop + t + kerfAllowance;
-      v37SetHeights(slab, outerRoot, outerTop);
-      slab.__v37OuterSlabAdjusted = true;
-      slab.note = (slab.note || "") + " • Yttersnitt ovanför planka med full kerf";
+      // Frigöringssnittet är snittet under plankan. Använd dess befintliga nivå som bas,
+      // eftersom föregående planberäkningar redan har tagit hänsyn till stöd, rotation,
+      // rund/plan anliggning och tidigare bortsågade bitar.
+      const innerRoot = v37StepRootHeight(innerStep);
+      const innerTop = v37StepTopHeight(innerStep);
 
-      // Frigöringssnittet ligger kvar på den inre nivån.
-      v37SetHeights(side, innerRoot, innerTop);
-      side.__v37InnerSideAdjusted = true;
-      side.note = (side.note || "") + " • Frigöringssnitt direkt under planka";
+      // Yttersnittet ska ligga planktjocklek + hela kerfen ovanför frigöringssnittet.
+      const outerRoot = innerRoot + thickness + kerf;
+      const outerTop = innerTop + thickness + kerf;
+
+      v37SetHeights(outerStep, outerRoot, outerTop);
+      v37SetHeights(innerStep, innerRoot, innerTop);
+
+      outerStep.__v37GenericKerfAdjusted = true;
+      innerStep.__v37GenericKerfAdjusted = true;
+      outerStep.note = (outerStep.note || "") + ` • Yttersnitt = frigöringssnitt + ${thickness} mm + ${kerf} mm kerf`;
+      innerStep.note = (innerStep.note || "") + " • Frigöringssnitt under planka";
     }
 
     return plan;
