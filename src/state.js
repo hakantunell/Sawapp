@@ -1,0 +1,69 @@
+// src/state.js
+// Gemensamt state-lager för kommande refaktorering.
+//
+// Den här modulen är medvetet inkopplad utan att ännu ta över legacy-state i app.js.
+// Nästa steg blir att flytta dimensions-arrayen och currentStepIndex hit kontrollerat.
+
+(function initSawState(global) {
+  const defaultDimensions = [
+    { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: 0 },
+    { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: 0 },
+    { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: 0 },
+    { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: 0 },
+    { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: 0 },
+    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: 0 },
+    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: 20 },
+  ];
+
+  const state = {
+    currentStepIndex: 0,
+    latestPackingLayout: null,
+    latestSawmillCutPlan: null,
+    dimensions: defaultDimensions.map(d => ({ ...d })),
+  };
+
+  function getState() {
+    return state;
+  }
+
+  function getDimensions() {
+    return state.dimensions;
+  }
+
+  function setDimensions(nextDimensions) {
+    state.dimensions = Array.isArray(nextDimensions)
+      ? nextDimensions.map(d => ({ ...d }))
+      : [];
+    return state.dimensions;
+  }
+
+  function updateDimension(index, patch) {
+    if (!state.dimensions[index]) return null;
+    state.dimensions[index] = { ...state.dimensions[index], ...(patch || {}) };
+    return state.dimensions[index];
+  }
+
+  function resetDimensions() {
+    state.dimensions = defaultDimensions.map(d => ({ ...d }));
+    return state.dimensions;
+  }
+
+  function getCurrentStepIndex() {
+    return state.currentStepIndex;
+  }
+
+  function setCurrentStepIndex(index) {
+    state.currentStepIndex = Math.max(0, Number(index) || 0);
+    return state.currentStepIndex;
+  }
+
+  global.SawState = {
+    getState,
+    getDimensions,
+    setDimensions,
+    updateDimension,
+    resetDimensions,
+    getCurrentStepIndex,
+    setCurrentStepIndex,
+  };
+})(window);
