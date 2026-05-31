@@ -6,6 +6,7 @@
 
 (function bootstrapSawapp() {
   const scripts = [
+    "src/version.js",
     "src/state.js",
     "src/geometry.js",
     "src/dimensions.js",
