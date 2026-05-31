@@ -4,6 +4,12 @@
 // Den här filen laddas efter legacy app.js och ersätter rena dimensionsfunktioner
 // med implementationerna i SawDimensions. Syftet är att kunna flytta logik stegvis
 // utan att ändra övrig UI-, sågplan- eller renderingskod i samma steg.
+//
+// OBS:
+// findBestCenterBlock() behålls tills vidare i legacy app.js, eftersom den använder
+// den lexikala variabeln `dimensions` som inte ligger på window. Om vi ersätter den
+// här får sågordningen ingen aktiv centrumdimension och visar felmeddelandet
+// "Ingen aktiv dimension får plats ..." trots att layouten finns.
 
 (function installDimensionsAdapter(global) {
   if (!global.SawDimensions) {
@@ -28,13 +34,10 @@
   global.maxFreeWidthForThickness = d.maxFreeWidthForThickness;
   global.resolveDimensionCandidate = d.resolveDimensionCandidate;
 
-  // Legacy findBestCenterBlock hämtade mode och dimensions globalt.
-  // Behåll samma signatur utåt men delegera själva logiken till modulen.
-  global.findBestCenterBlock = function findBestCenterBlock(geom, v) {
-    const mode = global.$ && global.$("optimizationMode") ? global.$("optimizationMode").value : "mixed";
-    const dimensions = global.dimensions || [];
-    return d.findBestCenterBlock(dimensions, geom, v, mode);
-  };
+  // Behåll legacy findBestCenterBlock tills dimensions-state har flyttats till en modul.
+  if (global.findBestCenterBlockLegacy) {
+    global.findBestCenterBlock = global.findBestCenterBlockLegacy;
+  }
 
   if (typeof global.update === "function") {
     global.update();
