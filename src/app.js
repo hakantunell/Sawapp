@@ -20,6 +20,7 @@
     "fix-v36.js",
     "fix-v37.js",
     "src/current-step-sync.js",
+    "src/current-step-navigation-sync.js",
   ];
 
   function loadScript(src) {
