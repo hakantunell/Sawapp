@@ -8,9 +8,11 @@
   const scripts = [
     "src/version.js",
     "src/state.js",
+    "src/inputs.js",
     "src/geometry.js",
     "src/dimensions.js",
     "app.js",
+    "src/inputs-adapter.js",
     "src/geometry-adapter.js",
     "src/dimensions-adapter.js",
     "src/sawplan.js",
