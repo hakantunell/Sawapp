@@ -10,6 +10,7 @@
     "src/dimensions.js",
     "app.js",
     "src/geometry-adapter.js",
+    "src/dimensions-adapter.js",
     "src/sawplan.js",
     "fix-v36.js",
     "fix-v37.js",
