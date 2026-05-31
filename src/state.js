@@ -57,6 +57,24 @@
     return state.currentStepIndex;
   }
 
+  function resetCurrentStepIndex() {
+    return setCurrentStepIndex(0);
+  }
+
+  function moveCurrentStep(delta, planLength) {
+    const length = Math.max(1, Number(planLength) || 1);
+    state.currentStepIndex = (state.currentStepIndex + Number(delta || 0) + length) % length;
+    return state.currentStepIndex;
+  }
+
+  function ensureCurrentStepInRange(planLength) {
+    const length = Math.max(0, Number(planLength) || 0);
+    if (length <= 0 || state.currentStepIndex >= length) {
+      state.currentStepIndex = 0;
+    }
+    return state.currentStepIndex;
+  }
+
   global.SawState = {
     getState,
     getDimensions,
@@ -65,5 +83,8 @@
     resetDimensions,
     getCurrentStepIndex,
     setCurrentStepIndex,
+    resetCurrentStepIndex,
+    moveCurrentStep,
+    ensureCurrentStepInRange,
   };
 })(window);
