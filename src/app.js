@@ -8,6 +8,7 @@
   const scripts = [
     "src/geometry.js",
     "app.js",
+    "src/geometry-adapter.js",
     "fix-v36.js",
     "fix-v37.js",
   ];
