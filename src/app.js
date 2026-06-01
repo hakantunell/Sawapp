@@ -8,6 +8,7 @@
   const scripts = [
     "src/version.js",
     "src/format.js",
+    "src/dimension-label.js",
     "src/state.js",
     "src/state-adapter.js",
     "src/inputs.js",
