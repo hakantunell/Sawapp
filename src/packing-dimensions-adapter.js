@@ -1,18 +1,18 @@
 // src/packing-dimensions-adapter.js
-// Adapter som kopplar legacy packningshjälpare till SawPackingDimensions.
+// Adapter som kopplar legacy packningshjalpare till SawPackingDimensions.
 //
-// Detta påverkar packnings-/sågverkslogik men inte canvasrendering,
-// currentStepIndex, stödberäkning, rotation eller svärdsposition direkt.
+// activePackingDimensions bevaras i legacy tills dimensions-state flyttas,
+// eftersom dimensions i app.js ar en lexical variabel och inte window.dimensions.
 
 (function installPackingDimensionsAdapter(global) {
   if (!global.SawPackingDimensions) {
-    console.warn("SawPackingDimensions saknas. Packningsfunktioner lämnas oförändrade.");
+    console.warn("SawPackingDimensions saknas. Packningsfunktioner lamnas oforandrade.");
     return;
   }
 
   const packing = global.SawPackingDimensions;
 
-  if (typeof global.activePackingDimensions === "function") {
+  if (typeof global.activePackingDimensions === "function" && !global.activePackingDimensionsLegacy) {
     global.activePackingDimensionsLegacy = global.activePackingDimensions;
   }
   if (typeof global.circleWidthAtY === "function") {
@@ -25,7 +25,10 @@
     global.rectFitsCircleLegacy = global.rectFitsCircle;
   }
 
-  global.activePackingDimensions = packing.activePackingDimensionsFromGlobal;
+  if (global.activePackingDimensionsLegacy) {
+    global.activePackingDimensions = global.activePackingDimensionsLegacy;
+  }
+
   global.circleWidthAtY = packing.circleWidthAtY;
   global.dimensionToPackCandidate = packing.dimensionToPackCandidate;
   global.rectFitsCircle = packing.rectFitsCircle;
