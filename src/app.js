@@ -25,6 +25,7 @@
     "src/block-geometry-adapter.js",
     "src/dimension-resolver-adapter.js",
     "src/dimension-resolver-centerblock-adapter.js",
+    "src/packing-dimensions-adapter.js",
     "src/inputs-adapter.js",
     "src/geometry-adapter.js",
     "src/dimensions-adapter.js",
