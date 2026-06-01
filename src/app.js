@@ -16,6 +16,7 @@
     "src/dimensions.js",
     "app.js",
     "src/format-adapter.js",
+    "src/dimension-label-adapter.js",
     "src/inputs-adapter.js",
     "src/geometry-adapter.js",
     "src/dimensions-adapter.js",
