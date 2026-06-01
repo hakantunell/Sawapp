@@ -22,8 +22,7 @@
     "src/current-step-sync.js",
     "src/current-step-navigation-sync.js",
     "src/latest-plan-sync.js",
-    "src/render-packing-canvas.js",
-    "src/render-packing-adapter.js"
+    "src/render-packing-canvas.js"
   ];
 
   function loadScript(src) {
