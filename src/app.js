@@ -21,6 +21,7 @@
     "fix-v37.js",
     "src/current-step-sync.js",
     "src/current-step-navigation-sync.js",
+    "src/current-step-state-bridge.js",
   ];
 
   function loadScript(src) {
