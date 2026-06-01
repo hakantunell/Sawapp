@@ -11,6 +11,7 @@
     "src/dimension-label.js",
     "src/wane.js",
     "src/block-geometry.js",
+    "src/dimension-resolver.js",
     "src/state.js",
     "src/state-adapter.js",
     "src/inputs.js",
