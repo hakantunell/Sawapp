@@ -25,7 +25,13 @@
   if (typeof global.requiredDiagonalWithWane === "function") global.requiredDiagonalWithWaneLegacy = global.requiredDiagonalWithWane;
   if (typeof global.maxFreeWidthForThickness === "function") global.maxFreeWidthForThicknessLegacy = global.maxFreeWidthForThickness;
   if (typeof global.resolveDimensionCandidate === "function") global.resolveDimensionCandidateLegacy = global.resolveDimensionCandidate;
-  if (typeof global.findBestCenterBlock === "function") global.findBestCenterBlockLegacy = global.findBestCenterBlock;
+
+  // Bevara den ursprungliga legacy-funktionen om en tidigare adapter redan har sparat den.
+  // centerblock-adaptern laddas före denna fil och kan annars råka skriva över
+  // findBestCenterBlockLegacy med den nya adapterfunktionen.
+  if (typeof global.findBestCenterBlock === "function" && !global.findBestCenterBlockLegacy) {
+    global.findBestCenterBlockLegacy = global.findBestCenterBlock;
+  }
 
   global.dimensionLabel = d.dimensionLabel;
   global.effectiveAllowedWaneForDimension = d.effectiveAllowedWaneForDimension;
