@@ -12,23 +12,30 @@
 
   const packing = global.SawPackingDimensions;
 
-  if (typeof global.activePackingDimensions === "function" && !global.activePackingDimensionsLegacy) {
-    global.activePackingDimensionsLegacy = global.activePackingDimensions;
+  // Fanga alltid legacy-versionen innan vi binder om nagra funktioner.
+  const legacyActivePackingDimensions =
+    typeof global.activePackingDimensions === "function"
+      ? global.activePackingDimensions
+      : global.activePackingDimensionsLegacy;
+
+  if (legacyActivePackingDimensions) {
+    global.activePackingDimensionsLegacy = legacyActivePackingDimensions;
+    global.activePackingDimensions = legacyActivePackingDimensions;
   }
+
   if (typeof global.circleWidthAtY === "function") {
     global.circleWidthAtYLegacy = global.circleWidthAtY;
   }
+
   if (typeof global.dimensionToPackCandidate === "function") {
     global.dimensionToPackCandidateLegacy = global.dimensionToPackCandidate;
   }
+
   if (typeof global.rectFitsCircle === "function") {
     global.rectFitsCircleLegacy = global.rectFitsCircle;
   }
 
-  if (global.activePackingDimensionsLegacy) {
-    global.activePackingDimensions = global.activePackingDimensionsLegacy;
-  }
-
+  // Dessa ar rena hjalpmetoder och kan bindas till modulen direkt.
   global.circleWidthAtY = packing.circleWidthAtY;
   global.dimensionToPackCandidate = packing.dimensionToPackCandidate;
   global.rectFitsCircle = packing.rectFitsCircle;
