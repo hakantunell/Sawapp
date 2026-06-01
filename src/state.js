@@ -1,8 +1,8 @@
 // src/state.js
 // Gemensamt state-lager för kommande refaktorering.
 //
-// Den här modulen är medvetet inkopplad utan att ännu ta över legacy-state i app.js.
-// Nästa steg blir att flytta dimensions-arrayen och currentStepIndex hit kontrollerat.
+// Den här modulen tar successivt över runtime-state från legacy app.js.
+// currentStepIndex är nu bryggad via current-step-state-bridge.js.
 
 (function initSawState(global) {
   const defaultDimensions = [
@@ -75,6 +75,37 @@
     return state.currentStepIndex;
   }
 
+  function getLatestPackingLayout() {
+    return state.latestPackingLayout;
+  }
+
+  function setLatestPackingLayout(layout) {
+    state.latestPackingLayout = layout || null;
+    return state.latestPackingLayout;
+  }
+
+  function getLatestSawmillCutPlan() {
+    return state.latestSawmillCutPlan;
+  }
+
+  function setLatestSawmillCutPlan(plan) {
+    state.latestSawmillCutPlan = plan || null;
+    return state.latestSawmillCutPlan;
+  }
+
+  function setLatestPlans(packingLayout, sawmillCutPlan) {
+    state.latestPackingLayout = packingLayout || null;
+    state.latestSawmillCutPlan = sawmillCutPlan || null;
+    return {
+      latestPackingLayout: state.latestPackingLayout,
+      latestSawmillCutPlan: state.latestSawmillCutPlan,
+    };
+  }
+
+  function clearLatestPlans() {
+    return setLatestPlans(null, null);
+  }
+
   global.SawState = {
     getState,
     getDimensions,
@@ -86,5 +117,11 @@
     resetCurrentStepIndex,
     moveCurrentStep,
     ensureCurrentStepInRange,
+    getLatestPackingLayout,
+    setLatestPackingLayout,
+    getLatestSawmillCutPlan,
+    setLatestSawmillCutPlan,
+    setLatestPlans,
+    clearLatestPlans,
   };
 })(window);
