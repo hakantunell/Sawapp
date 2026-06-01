@@ -1,8 +1,8 @@
 // src/dimension-resolver.js
-// Resolverar dimensionsrader till konkreta kandidater.
+// Resolverar dimensionsrader till konkreta kandidater och väljer centrumblock.
 //
 // Detta är ren dimensioneringslogik. Den använder SawWane för vankants-/diagonalkrav.
-// Modulen är inte aktiv förrän adapter laddas separat.
+// Delar av modulen aktiveras via adapter i separata steg.
 
 (function initSawDimensionResolver(global) {
   function requiredDiagonalWithWane(width, height, allowedCornerWane) {
@@ -85,7 +85,30 @@
     };
   }
 
+  function findBestCenterBlockFromInputs(dimensions, geom, v, mode) {
+    let active = (Array.isArray(dimensions) ? dimensions : []).filter(d => d.active);
+    const selectedMode = mode || "mixed";
+
+    if (selectedMode === "timber") active = active.filter(d => d.type === "fixed");
+    if (selectedMode === "plank") active = active.filter(d => d.type === "freeWidth");
+    if (selectedMode === "panel") active = active.filter(d => d.type === "minWidth" || d.wildEdge);
+
+    for (const d of active) {
+      const candidate = resolveDimensionCandidate(d, geom, v);
+      if (candidate) return { ...candidate, resultType: candidate.type || "fixed" };
+    }
+    return null;
+  }
+
+  function findBestCenterBlockFromDom(geom, v) {
+    const modeEl = document.getElementById("optimizationMode");
+    const mode = modeEl ? modeEl.value : "mixed";
+    return findBestCenterBlockFromInputs(global.dimensions, geom, v, mode);
+  }
+
   global.SawDimensionResolver = {
     resolveDimensionCandidate,
+    findBestCenterBlockFromInputs,
+    findBestCenterBlockFromDom,
   };
 })(window);
