@@ -13,8 +13,9 @@
   const canRenderCalcDetails = typeof global.renderCalcDetails === "function";
   const canRenderMetrics = typeof global.renderMetrics === "function" && typeof global.calculateMetrics === "function";
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
+  const canRenderSawOrderStatus = typeof global.renderSawOrderStatus === "function";
 
-  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep) return;
+  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -38,6 +39,12 @@
     return global.latestSawmillCutPlan || null;
   }
 
+  function currentPlanStep() {
+    const plan = latestSawmillCutPlanFromState();
+    const idx = currentStepIndexFromState();
+    return Array.isArray(plan) && plan.length ? plan[Math.min(Math.max(idx, 0), plan.length - 1)] : null;
+  }
+
   function recomputeViewModel() {
     if (typeof global.values !== "function") return null;
     if (typeof global.computeGeometry !== "function") return null;
@@ -53,7 +60,15 @@
       ? global.computeSawmillPacking(geom, v)
       : null;
 
-    return { v, geom, block, sideYield, packingLayout };
+    return {
+      v,
+      geom,
+      block,
+      sideYield,
+      packingLayout,
+      sawmillCutPlan: latestSawmillCutPlanFromState(),
+      step: currentPlanStep(),
+    };
   }
 
   global.update = function updateWithExtractedRenderers() {
@@ -71,11 +86,12 @@
       global.renderCalcDetails(model.geom, model.block, model.v);
     }
 
-    if (canRenderBigScreenStep) {
-      const plan = latestSawmillCutPlanFromState();
-      const idx = currentStepIndexFromState();
-      const step = Array.isArray(plan) && plan.length ? plan[Math.min(Math.max(idx, 0), plan.length - 1)] : null;
-      if (step) global.renderBigScreenStep(step);
+    if (canRenderBigScreenStep && model.step) {
+      global.renderBigScreenStep(model.step);
+    }
+
+    if (canRenderSawOrderStatus) {
+      global.renderSawOrderStatus(model);
     }
   };
 
