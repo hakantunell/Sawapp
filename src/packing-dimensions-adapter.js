@@ -12,6 +12,9 @@
   if (typeof global.activePackingDimensions === "function") {
     global.activePackingDimensionsLegacy = global.activePackingDimensions;
   }
+  if (typeof global.activeSideYieldDimensions === "function") {
+    global.activeSideYieldDimensionsLegacy = global.activeSideYieldDimensions;
+  }
   if (typeof global.circleWidthAtY === "function") {
     global.circleWidthAtYLegacy = global.circleWidthAtY;
   }
@@ -23,6 +26,7 @@
   }
 
   global.activePackingDimensions = packing.activePackingDimensionsFromGlobal;
+  global.activeSideYieldDimensions = packing.activeSideYieldDimensionsFromGlobal;
   global.circleWidthAtY = packing.circleWidthAtY;
   global.dimensionToPackCandidate = packing.dimensionToPackCandidate;
   global.rectFitsCircle = packing.rectFitsCircle;
