@@ -100,10 +100,18 @@
     return null;
   }
 
+  function getStateDimensions() {
+    if (global.SawState && typeof global.SawState.getDimensions === "function") {
+      const stateDimensions = global.SawState.getDimensions();
+      if (Array.isArray(stateDimensions) && stateDimensions.length) return stateDimensions;
+    }
+    return [];
+  }
+
   function findBestCenterBlockFromDom(geom, v) {
     const modeEl = document.getElementById("optimizationMode");
     const mode = modeEl ? modeEl.value : "mixed";
-    return findBestCenterBlockFromInputs(global.dimensions, geom, v, mode);
+    return findBestCenterBlockFromInputs(getStateDimensions(), geom, v, mode);
   }
 
   global.SawDimensionResolver = {
