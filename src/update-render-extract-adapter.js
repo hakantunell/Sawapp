@@ -57,7 +57,7 @@
       }
 
       if (canRenderSawmillCutPlan && model.sawmillCutPlan) {
-        global.renderSawmillCutPlan(model.sawmillCutPlan);
+        global.renderSawmillCutPlan(model.sawmillCutPlan, model.stepIndex);
       }
 
       if (canRenderPackingResult) {
