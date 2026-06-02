@@ -46,6 +46,7 @@
     "src/render-saw-order-status.js",
     "src/render-timber-saw-list.js",
     "src/render-timber-canvas.js",
+    "src/timber-saw-list.js",
     "src/dimensions-editor.js",
     "src/dimensions-editor-adapter.js",
     "src/dimensions-editor-activation-adapter.js",
