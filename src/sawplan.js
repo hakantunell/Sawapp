@@ -1,10 +1,5 @@
 // src/sawplan.js
 // Sågplansmotor för Sawapp.
-//
-// Detta är första steget i att bryta ut sågplanslogiken från legacy app.js.
-// Modulen kopplas in efter legacy app.js och ersätter buildSawmillCutPlan med
-// en implementation som motsvarar befintligt beteende. fix-v36.js och fix-v37.js
-// laddas fortfarande efter denna modul och kan därför fortsätta patcha planen.
 
 (function initSawPlan(global) {
   function sideToRotation(side) {
@@ -65,16 +60,80 @@
       : (global.SawGeometry ? global.SawGeometry.rotationToRadians(step.rotationValue || 0) : 0);
     const b = global.rotatedRectBounds(step.source, theta);
 
-    if (step.kind === "slab") {
-      return b.minY;
-    }
-
-    if (step.kind === "side") {
-      return b.maxY;
-    }
-
+    if (step.kind === "slab") return b.minY;
+    if (step.kind === "side") return b.maxY;
     if (step.side === "bottom") return b.maxY;
     return b.minY;
+  }
+
+  function slabCutBoundaryForStep(step) {
+    if (!step || !step.source || (step.kind !== "side" && step.kind !== "slab")) return null;
+    const r = step.source;
+    const phase = step.cutPhase || (step.kind === "slab" ? "outer" : "inner");
+
+    if (step.side === "top") {
+      return phase === "outer"
+        ? { axis: "y", op: ">=", value: r.y }
+        : { axis: "y", op: ">=", value: r.y + r.h };
+    }
+    if (step.side === "bottom") {
+      return phase === "outer"
+        ? { axis: "y", op: "<=", value: r.y + r.h }
+        : { axis: "y", op: "<=", value: r.y };
+    }
+    if (step.side === "right") {
+      return phase === "outer"
+        ? { axis: "x", op: "<=", value: r.x + r.w }
+        : { axis: "x", op: "<=", value: r.x };
+    }
+    if (step.side === "left") {
+      return phase === "outer"
+        ? { axis: "x", op: ">=", value: r.x }
+        : { axis: "x", op: ">=", value: r.x + r.w };
+    }
+    return null;
+  }
+
+  function completedSlabCuts(plan, stepIndex) {
+    const cuts = [];
+    if (!plan) return cuts;
+    for (let i = 0; i < stepIndex; i++) {
+      const c = slabCutBoundaryForStep(plan[i]);
+      if (c) cuts.push(c);
+    }
+    return cuts;
+  }
+
+  function pointKeptBySlabCuts(x, y, cuts) {
+    for (const c of cuts || []) {
+      if (c.axis === "y") {
+        if (c.op === ">=" && y < c.value - 0.001) return false;
+        if (c.op === "<=" && y > c.value + 0.001) return false;
+      } else {
+        if (c.op === ">=" && x < c.value - 0.001) return false;
+        if (c.op === "<=" && x > c.value + 0.001) return false;
+      }
+    }
+    return true;
+  }
+
+  function remainingPackingBoundsWithSlabCuts(packingLayout, plan, stepIndex, rotationValue) {
+    const cuts = completedSlabCuts(plan, stepIndex);
+    const theta = global.rotationToRadians
+      ? global.rotationToRadians(rotationValue || 0)
+      : (global.SawGeometry ? global.SawGeometry.rotationToRadians(rotationValue || 0) : 0);
+    let maxY = -Infinity;
+
+    for (const r of (packingLayout || [])) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      if (!pointKeptBySlabCuts(cx, cy, cuts)) continue;
+
+      const b = global.rotatedRectBounds(r, theta);
+      maxY = Math.max(maxY, b.maxY);
+    }
+
+    return Number.isFinite(maxY) ? maxY : 0;
   }
 
   function recalcSawmillPlanHeights(plan, packingLayout, v) {
@@ -82,18 +141,12 @@
     const taperDiff = (v.rootDiameter - v.topDiameter) / 2;
 
     plan.forEach((step, idx) => {
-      // Behåll remainingPackingPieces-anropet för kompatibilitet med legacy-flödet,
-      // även om aktuell höjdberäkning använder remainingPackingBoundsWithSlabCuts.
       remainingPackingPieces(packingLayout, plan, idx);
-
-      const supportBottom = global.remainingPackingBoundsWithSlabCuts
-        ? global.remainingPackingBoundsWithSlabCuts(packingLayout, plan, idx, step.rotationValue || 0)
-        : packingSupportBottomY(packingLayout, step.rotationValue || 0);
+      const supportBottom = remainingPackingBoundsWithSlabCuts(packingLayout, plan, idx, step.rotationValue || 0);
       const bladeY = packingBladeYForStep(step);
       const h = Math.max(0, supportBottom - bladeY);
 
       step.bladeToBed = h;
-
       if (idx === 0) {
         step.rootSupportHeight = h + taperDiff / 2;
         step.topSupportHeight = h - taperDiff / 2;
@@ -130,7 +183,6 @@
     sidePieces.sort((a, b) => (sideOrder[a.side] ?? 9) - (sideOrder[b.side] ?? 9));
 
     const steps = [];
-
     sidePieces.forEach((p) => {
       steps.push({
         kind: "slab",
@@ -196,6 +248,10 @@
     remainingPackingPieces,
     packingSupportBottomY,
     packingBladeYForStep,
+    slabCutBoundaryForStep,
+    completedSlabCuts,
+    pointKeptBySlabCuts,
+    remainingPackingBoundsWithSlabCuts,
     recalcSawmillPlanHeights,
     buildSawmillCutPlan,
   };
@@ -206,6 +262,10 @@
   if (typeof global.remainingPackingPieces === "function") global.remainingPackingPiecesLegacy = global.remainingPackingPieces;
   if (typeof global.packingSupportBottomY === "function") global.packingSupportBottomYLegacy = global.packingSupportBottomY;
   if (typeof global.packingBladeYForStep === "function") global.packingBladeYForStepLegacy = global.packingBladeYForStep;
+  if (typeof global.slabCutBoundaryForStep === "function") global.slabCutBoundaryForStepLegacy = global.slabCutBoundaryForStep;
+  if (typeof global.completedSlabCuts === "function") global.completedSlabCutsLegacy = global.completedSlabCuts;
+  if (typeof global.pointKeptBySlabCuts === "function") global.pointKeptBySlabCutsLegacy = global.pointKeptBySlabCuts;
+  if (typeof global.remainingPackingBoundsWithSlabCuts === "function") global.remainingPackingBoundsWithSlabCutsLegacy = global.remainingPackingBoundsWithSlabCuts;
   if (typeof global.recalcSawmillPlanHeights === "function") global.recalcSawmillPlanHeightsLegacy = global.recalcSawmillPlanHeights;
 
   global.sideToRotation = sideToRotation;
@@ -214,6 +274,10 @@
   global.remainingPackingPieces = remainingPackingPieces;
   global.packingSupportBottomY = packingSupportBottomY;
   global.packingBladeYForStep = packingBladeYForStep;
+  global.slabCutBoundaryForStep = slabCutBoundaryForStep;
+  global.completedSlabCuts = completedSlabCuts;
+  global.pointKeptBySlabCuts = pointKeptBySlabCuts;
+  global.remainingPackingBoundsWithSlabCuts = remainingPackingBoundsWithSlabCuts;
   global.recalcSawmillPlanHeights = recalcSawmillPlanHeights;
 
   if (typeof global.buildSawmillCutPlan === "function") {
