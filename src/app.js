@@ -32,6 +32,7 @@
     "src/sawplan.js",
     "fix-v36.js",
     "fix-v37.js",
+    "fix-v38.js",
     "src/current-step-sync.js",
     "src/current-step-navigation-sync.js",
     "src/latest-plan-sync.js",
