@@ -1,0 +1,36 @@
+Skriver ner saker som jag ska komma igåg
+Nya saker
+- Spara konfigurationer så att man inte behöver gå in och ändra dessa varje gång
+- Spara tillagda träddimensioner
+- komma ihåg vilka dimensioner som man har som "aktiva"
+- uppdatera med "Voice command" för valda delar
+  - "Diameter stöd1" : Träddiameter vid stöd 1
+  - "Diameter stöd2" : Träddiameter vid stöd 1
+  - "Rotera stock" : Roterar stock enligt stockplan
+  - "stöd mått?", "stöd1 mått", "stöd2 mått" : Ger inställningsmåtten för stöden
+
+- få röst feedback på kommandon
+- kunna planera på "distans". dvs att man kan sitta inne och planera stockdimensioner och "skicka" till "sågdatorn".
+  dvs nån typ av gemensam databas för att kunna sätta upp sågdimensioner. 
+- "presets" för dimensioner. dvs att man kan skapa olika egna "presets" för dimensioner. Tk "Reglar" där man optimerar för reglar.
+- Skapa en "sågrapport" antal stockar sågade samt vilka dimensioner som är sågade. antal dimensioner / längd. Denna bör sparas nånstans så man kan komma åt den. (databas?)  
+
+
+Förbättringar:
+  - listan med dimensioner man får ut kanske kan göras kortare. 
+    bara en "ruta" per dimension där det står (dimension, prio, antal för denna stock)
+  - uppdatera "sågvy" med bättre bild
+  - Göra en bättre "stor bild" (Vet inte hur den ska se ut riktigt ännu)
+  - snyggare rendrering/färger på sågplan 
+  - animering som visar rotation på stocken
+  - Sågsvärdets tjocklek som stämmer bättre överens med "verkligheten", 
+    men undersidan på svärdet bör vara markerat för att visa att måtten beräknas däifrån
+
+
+Buggar:
+  - Stockrotationen är inte optimal
+  - Svärdet visas inte på rätt ställe i sågplan
+  - Beräkningsvärden under "stock" är inte korrekta.
+  - Vid optimerar för sågverk/packning, och bara har fyrkantblock med som dimension (170*170), så beter sig sågplanet konstigt Måtten är okså konstiga. 
+    byter jag så att jag optimerar för "timmerblock" så ser det riktigt ut. 
+
