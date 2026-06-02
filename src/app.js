@@ -42,6 +42,7 @@
     "src/render-calc-details.js",
     "src/render-metrics.js",
     "src/update-render-extract-adapter.js",
+    "src/render-big-screen-step.js",
     "src/big-step-navigation-fix.js"
   ];
 
