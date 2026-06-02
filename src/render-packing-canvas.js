@@ -1,7 +1,68 @@
 // src/render-packing-canvas.js
 // Renderer för sågverks-/packningsvyn.
+//
+// Viktigt: den här modulen måste behålla v36-logiken:
+// - rund/osågad sida kan ligga mot bädden
+// - kvarvarande cirkelkropp, inte bara packningsrektanglar, styr bäddkontakt
+// - svärdet visas som kedjehöjd över bädden
 
 (function initSawRenderPacking(global) {
+  function roundContactForStep(step) {
+    if (typeof global.v36RoundContactForStep === "function") {
+      return global.v36RoundContactForStep(step);
+    }
+    if (!step) return false;
+    const rot = ((step.rotationValue || 0) % 360 + 360) % 360;
+    return rot === 0 || rot === 90;
+  }
+
+  function remainingBodyBottomWithCuts(radiusMm, cuts, rotationValue) {
+    if (typeof global.v36RemainingBodyBottomWithCuts === "function") {
+      return global.v36RemainingBodyBottomWithCuts(radiusMm, cuts, rotationValue);
+    }
+
+    const theta = global.rotationToRadians(rotationValue || 0);
+    let maxY = -Infinity;
+    const samples = 1440;
+
+    function keep(x, y) {
+      return typeof global.pointKeptBySlabCuts === "function"
+        ? global.pointKeptBySlabCuts(x, y, cuts)
+        : true;
+    }
+
+    function add(x, y) {
+      if (!keep(x, y)) return;
+      const p = global.rotatePoint(x, y, theta);
+      if (p.y > maxY) maxY = p.y;
+    }
+
+    for (let i = 0; i < samples; i++) {
+      const a = (i / samples) * Math.PI * 2;
+      add(Math.cos(a) * radiusMm, Math.sin(a) * radiusMm);
+    }
+
+    for (const c of (cuts || [])) {
+      const val = c.value;
+      if (c.axis === "y" && Math.abs(val) <= radiusMm) {
+        const xh = Math.sqrt(Math.max(0, radiusMm * radiusMm - val * val));
+        for (let i = 0; i <= 120; i++) {
+          const x = -xh + (2 * xh * i) / 120;
+          add(x, val);
+        }
+      }
+      if (c.axis === "x" && Math.abs(val) <= radiusMm) {
+        const yh = Math.sqrt(Math.max(0, radiusMm * radiusMm - val * val));
+        for (let i = 0; i <= 120; i++) {
+          const y = -yh + (2 * yh * i) / 120;
+          add(val, y);
+        }
+      }
+    }
+
+    return Number.isFinite(maxY) ? maxY : radiusMm;
+  }
+
   function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
     const canvas = global.$ ? global.$("sawCanvas") : document.getElementById("sawCanvas");
     const ctx = canvas.getContext("2d");
@@ -17,26 +78,35 @@
 
     const stepIndex = typeof currentStepIndex !== "undefined" ? currentStepIndex : 0;
     const planStep = sawmillCutPlan && sawmillCutPlan[stepIndex] ? sawmillCutPlan[stepIndex] : sawmillCutPlan?.[0];
-    const theta = planStep ? rotationToRadians(planStep.rotationValue || 0) : 0;
+    const theta = planStep ? global.rotationToRadians(planStep.rotationValue || 0) : 0;
+    const slabCuts = global.completedSlabCuts(sawmillCutPlan, stepIndex);
 
-    const slabCuts = completedSlabCuts(sawmillCutPlan, stepIndex);
-    const supportBottom = remainingPackingBoundsWithSlabCuts(packingLayout, sawmillCutPlan, stepIndex, planStep ? planStep.rotationValue : 0);
+    const packingBottom = global.remainingPackingBoundsWithSlabCuts(
+      packingLayout,
+      sawmillCutPlan,
+      stepIndex,
+      planStep ? planStep.rotationValue : 0
+    );
+    const bodyBottom = remainingBodyBottomWithCuts(
+      geom.designDiameter / 2,
+      slabCuts,
+      planStep ? planStep.rotationValue : 0
+    );
+    const supportBottom = roundContactForStep(planStep) ? bodyBottom : packingBottom;
     const yShift = bedY - supportBottom * scale;
 
     ctx.save();
     ctx.translate(cx, cy);
 
-    // Kroppen/stocken roteras och flyttas ned till bädden efter att tidigare sågade bitar tagits bort.
     ctx.save();
     ctx.translate(0, yShift);
     ctx.rotate(theta);
 
-    // Rita stockcirkeln som bakgrund.
     ctx.fillStyle = "#fff7ed";
     ctx.beginPath();
     ctx.arc(0, 0, outerR, 0, Math.PI * 2);
     ctx.fill();
-    drawBarkRing(ctx, outerR, v.bark * scale);
+    global.drawBarkRing(ctx, outerR, v.bark * scale);
 
     ctx.strokeStyle = "#60a5fa";
     ctx.lineWidth = 2;
@@ -46,15 +116,13 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Radera hela bortsågade ytterzoner/slabbor, inte bara plankrektangeln.
-    drawRemovedSlabs(ctx, slabCuts, outerR, scale);
+    global.drawRemovedSlabs(ctx, slabCuts, outerR, scale);
 
-    // Rita kvarvarande layout.
-    const done = completedPackingSources(sawmillCutPlan, stepIndex);
-    packingLayout.forEach((r, idx) => {
+    const done = global.completedPackingSources(sawmillCutPlan, stepIndex);
+    (packingLayout || []).forEach((r, idx) => {
       const cx0 = r.x + r.w / 2;
       const cy0 = r.y + r.h / 2;
-      if (done.has(r) || !pointKeptBySlabCuts(cx0, cy0, slabCuts)) return;
+      if (done.has(r) || !global.pointKeptBySlabCuts(cx0, cy0, slabCuts)) return;
       ctx.fillStyle = r.type === "center" ? "rgba(74, 222, 128, .42)" : (r.wildEdge ? "rgba(250, 204, 21, .45)" : "rgba(96, 165, 250, .35)");
       ctx.strokeStyle = r.type === "center" ? "#16a34a" : (r.wildEdge ? "#ca8a04" : "#2563eb");
       ctx.lineWidth = r.type === "center" ? 3 : 2;
@@ -66,9 +134,8 @@
       ctx.fillText(`${idx + 1}. ${r.label}`, (r.x + r.w / 2) * scale, (r.y + r.h / 2) * scale + 4);
     });
 
-    ctx.restore(); // roterad/flyttad kropp
+    ctx.restore();
 
-    // Bädden är fast.
     ctx.strokeStyle = "#111827";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -80,50 +147,61 @@
     ctx.textAlign = "left";
     ctx.fillText("bädd / stockstöd", -outerR - 65, bedY + 22);
 
-    // Svärdet är alltid horisontellt och visas på aktuell snittyta efter samma rotation/förskjutning.
-    if (planStep && planStep.source) {
-      const rb0 = rotatedRectBounds({
-        x: planStep.source.x,
-        y: planStep.source.y,
-        w: planStep.source.w,
-        h: planStep.source.h,
-      }, planStep.rotationValue || 0);
-
-      let bladeYLocal;
-      if (planStep.kind === "slab") {
-        bladeYLocal = rb0.minY;
-      } else if (planStep.kind === "side") {
-        bladeYLocal = rb0.maxY;
-      } else {
-        bladeYLocal = planStep.side === "bottom" ? rb0.maxY : rb0.minY;
-      }
-
-      const bladeY = yShift + bladeYLocal * scale;
-      const minX = rb0.minX * scale;
-      const maxX = rb0.maxX * scale;
+    if (planStep) {
+      const h1 = Number.isFinite(planStep.rootSupportHeight) ? planStep.rootSupportHeight : planStep.bladeToBed;
+      const h2 = Number.isFinite(planStep.topSupportHeight) ? planStep.topSupportHeight : planStep.bladeToBed;
+      const bladeHeight = ((h1 || 0) + (h2 || 0)) / 2;
+      const bladeY = bedY - bladeHeight * scale;
 
       ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = 4;
       ctx.setLineDash([10, 6]);
       ctx.beginPath();
-      ctx.moveTo(minX - 30, bladeY);
-      ctx.lineTo(maxX + 30, bladeY);
+      ctx.moveTo(-outerR - 65, bladeY);
+      ctx.lineTo(outerR + 65, bladeY);
       ctx.stroke();
       ctx.setLineDash([]);
 
+      const action = planStep.kind === "slab" ? "ta bort ytterdel" : (planStep.kind === "side" ? "frigör" : "blocka");
       ctx.fillStyle = "#ef4444";
       ctx.font = "bold 16px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText(
-        `Aktuellt steg ${planStep.step}: ${planStep.kind === "side" ? "frigör" : "blocka"} ${planStep.label}`,
-        0,
-        -outerR - 18
-      );
+      ctx.fillText(`Aktuellt steg ${planStep.step}: ${action} ${planStep.label}`, 0, -outerR - 18);
+
+      const fmtIn = typeof global.fmtIn === "function" ? global.fmtIn : (mm) => `${(mm / 25.4).toFixed(2)}\"`;
+
+      const x1 = -outerR - 42;
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, bladeY); ctx.lineTo(x1, bedY);
+      ctx.moveTo(x1 - 8, bladeY); ctx.lineTo(x1 + 8, bladeY);
+      ctx.moveTo(x1 - 8, bedY); ctx.lineTo(x1 + 8, bedY);
+      ctx.stroke();
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 13px system-ui";
+      ctx.textAlign = "left";
+      ctx.fillText(`stöd 1: ${h1.toFixed(0)} mm / ${fmtIn(h1)}`, x1 + 12, (bladeY + bedY) / 2);
+
+      const x2 = outerR + 42;
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(x2, bladeY); ctx.lineTo(x2, bedY);
+      ctx.moveTo(x2 - 8, bladeY); ctx.lineTo(x2 + 8, bladeY);
+      ctx.moveTo(x2 - 8, bedY); ctx.lineTo(x2 + 8, bedY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#2563eb";
+      ctx.textAlign = "right";
+      ctx.fillText(`stöd 2: ${h2.toFixed(0)} mm / ${fmtIn(h2)}`, x2 - 10, (bladeY + bedY) / 2);
 
       ctx.fillStyle = "#475569";
       ctx.font = "13px system-ui";
+      ctx.textAlign = "center";
       ctx.fillText(
-        "Tidigare frigjorda ytterzoner/slabbor är borttagna; kvarvarande kropp ligger mot bädden.",
+        "Tidigare snitt är borttagna; kvarvarande kropp ligger mot bädden. Svärdet visas som kedjehöjd över bädd.",
         0,
         bedY + 44
       );
