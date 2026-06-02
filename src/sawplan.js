@@ -200,6 +200,22 @@
     buildSawmillCutPlan,
   };
 
+  if (typeof global.sideToRotation === "function") global.sideToRotationLegacy = global.sideToRotation;
+  if (typeof global.inferPackingSide === "function") global.inferPackingSideLegacy = global.inferPackingSide;
+  if (typeof global.completedPackingSources === "function") global.completedPackingSourcesLegacy = global.completedPackingSources;
+  if (typeof global.remainingPackingPieces === "function") global.remainingPackingPiecesLegacy = global.remainingPackingPieces;
+  if (typeof global.packingSupportBottomY === "function") global.packingSupportBottomYLegacy = global.packingSupportBottomY;
+  if (typeof global.packingBladeYForStep === "function") global.packingBladeYForStepLegacy = global.packingBladeYForStep;
+  if (typeof global.recalcSawmillPlanHeights === "function") global.recalcSawmillPlanHeightsLegacy = global.recalcSawmillPlanHeights;
+
+  global.sideToRotation = sideToRotation;
+  global.inferPackingSide = inferPackingSide;
+  global.completedPackingSources = completedPackingSources;
+  global.remainingPackingPieces = remainingPackingPieces;
+  global.packingSupportBottomY = packingSupportBottomY;
+  global.packingBladeYForStep = packingBladeYForStep;
+  global.recalcSawmillPlanHeights = recalcSawmillPlanHeights;
+
   if (typeof global.buildSawmillCutPlan === "function") {
     global.buildSawmillCutPlanLegacy = global.buildSawmillCutPlan;
     global.buildSawmillCutPlan = buildSawmillCutPlan;
