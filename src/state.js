@@ -22,6 +22,16 @@
     dimensions: defaultDimensions.map(d => ({ ...d })),
   };
 
+  function cloneDimension(d) {
+    return { ...(d || {}) };
+  }
+
+  function normalizeDimensions(nextDimensions) {
+    return Array.isArray(nextDimensions)
+      ? nextDimensions.map(cloneDimension)
+      : [];
+  }
+
   function getState() {
     return state;
   }
@@ -31,9 +41,7 @@
   }
 
   function setDimensions(nextDimensions) {
-    state.dimensions = Array.isArray(nextDimensions)
-      ? nextDimensions.map(d => ({ ...d }))
-      : [];
+    state.dimensions = normalizeDimensions(nextDimensions);
     return state.dimensions;
   }
 
@@ -41,6 +49,25 @@
     if (!state.dimensions[index]) return null;
     state.dimensions[index] = { ...state.dimensions[index], ...(patch || {}) };
     return state.dimensions[index];
+  }
+
+  function patchDimension(index, patch) {
+    return updateDimension(index, patch);
+  }
+
+  function moveDimension(fromIndex, toIndex) {
+    const from = Number(fromIndex);
+    const to = Number(toIndex);
+    if (!Number.isInteger(from) || !Number.isInteger(to)) return state.dimensions;
+    if (from < 0 || from >= state.dimensions.length) return state.dimensions;
+    if (to < 0 || to >= state.dimensions.length) return state.dimensions;
+    if (from === to) return state.dimensions;
+
+    const next = state.dimensions.map(cloneDimension);
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    state.dimensions = next;
+    return state.dimensions;
   }
 
   function resetDimensions() {
@@ -111,6 +138,8 @@
     getDimensions,
     setDimensions,
     updateDimension,
+    patchDimension,
+    moveDimension,
     resetDimensions,
     getCurrentStepIndex,
     setCurrentStepIndex,
