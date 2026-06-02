@@ -47,6 +47,7 @@
     "src/render-timber-saw-list.js",
     "src/render-timber-canvas.js",
     "src/render-support-side-view.js",
+    "src/render-input-visibility.js",
     "src/timber-saw-list.js",
     "src/timber-saw-list-adapter.js",
     "src/view-model.js",
