@@ -3,8 +3,8 @@
 //
 // Detta är ett mellanläge: legacy update() körs först och skriver samma DOM som
 // tidigare. Därefter renderar modulerna samma information igen. Syftet är att
-// verifiera renderCalcDetails()/renderMetrics() i aktiv drift innan vi senare
-// ersätter inline-koden i app.js med direkta funktionsanrop.
+// verifiera utbrutna renderers i aktiv drift innan vi senare ersätter inline-koden
+// i app.js med direkta funktionsanrop.
 
 (function installUpdateRenderExtractAdapter(global) {
   if (global.__updateRenderExtractAdapterInstalled) return;
@@ -12,8 +12,9 @@
 
   const canRenderCalcDetails = typeof global.renderCalcDetails === "function";
   const canRenderMetrics = typeof global.renderMetrics === "function" && typeof global.calculateMetrics === "function";
+  const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
 
-  if (!canRenderCalcDetails && !canRenderMetrics) return;
+  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -21,6 +22,20 @@
   function selectedMode() {
     const el = global.document.getElementById("optimizationMode");
     return el ? el.value : "mixed";
+  }
+
+  function currentStepIndexFromState() {
+    if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
+      return global.SawState.getCurrentStepIndex();
+    }
+    return typeof global.currentStepIndex === "number" ? global.currentStepIndex : 0;
+  }
+
+  function latestSawmillCutPlanFromState() {
+    if (global.SawState && typeof global.SawState.getLatestSawmillCutPlan === "function") {
+      return global.SawState.getLatestSawmillCutPlan();
+    }
+    return global.latestSawmillCutPlan || null;
   }
 
   function recomputeViewModel() {
@@ -54,6 +69,13 @@
 
     if (canRenderCalcDetails) {
       global.renderCalcDetails(model.geom, model.block, model.v);
+    }
+
+    if (canRenderBigScreenStep) {
+      const plan = latestSawmillCutPlanFromState();
+      const idx = currentStepIndexFromState();
+      const step = Array.isArray(plan) && plan.length ? plan[Math.min(Math.max(idx, 0), plan.length - 1)] : null;
+      if (step) global.renderBigScreenStep(step);
     }
   };
 
