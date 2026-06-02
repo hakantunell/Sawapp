@@ -95,6 +95,27 @@
     return { x: x * c - y * s, y: x * s + y * c };
   }
 
+  function rotatedRectBounds(rect, theta) {
+    if (!rect) {
+      return { minX: 0, maxX: 0, minY: 0, maxY: 0, pts: [] };
+    }
+
+    const pts = [
+      rotatePoint(rect.x, rect.y, theta),
+      rotatePoint(rect.x + rect.w, rect.y, theta),
+      rotatePoint(rect.x, rect.y + rect.h, theta),
+      rotatePoint(rect.x + rect.w, rect.y + rect.h, theta),
+    ];
+
+    return {
+      minX: Math.min(...pts.map(p => p.x)),
+      maxX: Math.max(...pts.map(p => p.x)),
+      minY: Math.min(...pts.map(p => p.y)),
+      maxY: Math.max(...pts.map(p => p.y)),
+      pts,
+    };
+  }
+
   global.SawGeometry = {
     mmToIn,
     fmtMm,
@@ -106,5 +127,6 @@
     requiredDiagonalWithWane,
     maxFreeWidthForThickness,
     rotatePoint,
+    rotatedRectBounds,
   };
 })(window);
