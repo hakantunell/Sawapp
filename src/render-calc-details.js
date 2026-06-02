@@ -1,5 +1,9 @@
 // src/render-calc-details.js
 // Renderer för kalkyldetaljer-tabellen.
+//
+// Den här filen patchar inte update(). Den exponerar bara renderCalcDetails()
+// så att update()-flödet senare kan byta från inline-DOM till ett direkt
+// funktionsanrop på ett kontrollerat sätt.
 
 (function initSawRenderCalcDetails(global) {
   function formatMm(value, decimals = 0) {
@@ -33,23 +37,4 @@
   };
 
   global.renderCalcDetails = renderCalcDetails;
-
-  if (typeof global.update === "function" && !global.__renderCalcDetailsUpdatePatchInstalled) {
-    global.__renderCalcDetailsUpdatePatchInstalled = true;
-    const legacyUpdate = global.update;
-    global.update = function updateWithCalcDetailsRenderer() {
-      legacyUpdate.apply(this, arguments);
-
-      if (typeof global.values !== "function" || typeof global.computeGeometry !== "function") return;
-      const v = global.values();
-      const geom = global.computeGeometry(v);
-      const block = typeof global.findBestCenterBlock === "function"
-        ? global.findBestCenterBlock(geom, v)
-        : null;
-
-      renderCalcDetails(geom, block, v);
-    };
-
-    global.update();
-  }
 })(window);
