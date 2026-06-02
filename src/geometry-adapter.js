@@ -16,6 +16,9 @@
   if (typeof global.sideForRotation === "function") {
     global.sideForRotationLegacy = global.sideForRotation;
   }
+  if (typeof global.rotatePoint === "function") {
+    global.rotatePointLegacy = global.rotatePoint;
+  }
 
   global.computeGeometry = function computeGeometry(values) {
     return global.SawGeometry.computeLogGeometry(values);
@@ -23,6 +26,10 @@
 
   global.sideForRotation = function sideForRotation(rotationValue) {
     return global.SawGeometry.sideForRotation(rotationValue);
+  };
+
+  global.rotatePoint = function rotatePoint(x, y, theta) {
+    return global.SawGeometry.rotatePoint(x, y, theta);
   };
 
   // Räkna om direkt så att UI och sågplan använder adapter-versionerna även efter sidladdning.
