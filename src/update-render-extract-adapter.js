@@ -10,6 +10,7 @@
   if (global.__updateRenderExtractAdapterInstalled) return;
   if (typeof global.update !== "function") return;
 
+  const canRenderInputVisibility = typeof global.renderInputVisibility === "function";
   const canRenderCalcDetails = typeof global.renderCalcDetails === "function";
   const canRenderMetrics = typeof global.renderMetrics === "function";
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
@@ -24,7 +25,7 @@
     return;
   }
 
-  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas && !canRenderSupportSideView) return;
+  if (!canRenderInputVisibility && !canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas && !canRenderSupportSideView) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -34,6 +35,10 @@
 
     const model = global.buildSawViewModel();
     if (!model) return;
+
+    if (canRenderInputVisibility) {
+      global.renderInputVisibility();
+    }
 
     if (canRenderMetrics) {
       global.renderMetrics(model.geom, model.metrics);
