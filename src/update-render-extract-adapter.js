@@ -15,8 +15,9 @@
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
   const canRenderSawOrderStatus = typeof global.renderSawOrderStatus === "function";
   const canRenderTimberSawList = typeof global.renderTimberSawList === "function" && typeof global.buildSawList === "function";
+  const canRenderTimberCanvas = typeof global.renderTimberCanvasFromModule === "function" && typeof global.buildSawList === "function";
 
-  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList) return;
+  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -61,7 +62,7 @@
     const packingLayout = mode === "sawmill" && typeof global.computeSawmillPacking === "function"
       ? global.computeSawmillPacking(geom, v)
       : null;
-    const timberSawList = mode !== "sawmill" && canRenderTimberSawList
+    const timberSawList = mode !== "sawmill" && (canRenderTimberSawList || canRenderTimberCanvas)
       ? global.buildSawList(block, geom, v)
       : null;
 
@@ -103,6 +104,10 @@
 
     if (canRenderTimberSawList && model.mode !== "sawmill" && model.timberSawList) {
       global.renderTimberSawList(model.timberSawList);
+    }
+
+    if (canRenderTimberCanvas && model.mode !== "sawmill" && model.timberSawList) {
+      global.renderTimberCanvasFromModule(model.block, model.geom, model.v, model.timberSawList);
     }
   };
 
