@@ -1,9 +1,5 @@
 // src/render-packing-canvas.js
 // Renderer för sågverks-/packningsvyn.
-//
-// Detta är första steget i att flytta renderPackingCanvas() ur legacy app.js.
-// Modulen är inte inkopplad ännu. Den exporterar samma rendering via
-// SawRenderPacking.renderPackingCanvas så att vi kan adapterkoppla den i nästa steg.
 
 (function initSawRenderPacking(global) {
   function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
@@ -139,4 +135,13 @@
   global.SawRenderPacking = {
     renderPackingCanvas,
   };
+
+  if (typeof global.renderPackingCanvas === "function") {
+    global.renderPackingCanvasLegacy = global.renderPackingCanvas;
+    global.renderPackingCanvas = renderPackingCanvas;
+  }
+
+  if (typeof global.update === "function") {
+    global.update();
+  }
 })(window);
