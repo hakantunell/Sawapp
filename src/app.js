@@ -36,6 +36,7 @@
     "src/latest-plan-sync.js",
     "src/render-packing-canvas.js",
     "src/render-sawmill-cut-plan.js",
+    "src/render-yield-results.js",
     "src/big-step-navigation-fix.js"
   ];
 
@@ -45,7 +46,7 @@
       script.src = src;
       script.async = false;
       script.onload = resolve;
-      script.onerror = () => reject(new Error(`Kunde inte ladda ${src}`));
+      script.onerror = () => reject(new Error("Kunde inte ladda " + src));
       document.body.appendChild(script);
     });
   }
@@ -56,7 +57,7 @@
       console.error("Sawapp bootstrap-fel:", error);
       const fallback = document.createElement("div");
       fallback.style.cssText = "margin:1rem;padding:1rem;border:1px solid #ef4444;background:#fee2e2;color:#7f1d1d;border-radius:8px";
-      fallback.textContent = `Fel vid laddning av appen: ${error.message}`;
+      fallback.textContent = "Fel vid laddning av appen: " + error.message;
       document.body.prepend(fallback);
     });
 })();
