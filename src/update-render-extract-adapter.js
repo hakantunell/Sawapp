@@ -14,8 +14,9 @@
   const canRenderMetrics = typeof global.renderMetrics === "function" && typeof global.calculateMetrics === "function";
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
   const canRenderSawOrderStatus = typeof global.renderSawOrderStatus === "function";
+  const canRenderTimberSawList = typeof global.renderTimberSawList === "function" && typeof global.buildSawList === "function";
 
-  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus) return;
+  if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -50,22 +51,28 @@
     if (typeof global.computeGeometry !== "function") return null;
     if (typeof global.findBestCenterBlock !== "function") return null;
 
+    const mode = selectedMode();
     const v = global.values();
     const geom = global.computeGeometry(v);
     const block = global.findBestCenterBlock(geom, v);
     const sideYield = typeof global.computeSideYield === "function"
       ? global.computeSideYield(block, geom, v)
       : [];
-    const packingLayout = selectedMode() === "sawmill" && typeof global.computeSawmillPacking === "function"
+    const packingLayout = mode === "sawmill" && typeof global.computeSawmillPacking === "function"
       ? global.computeSawmillPacking(geom, v)
+      : null;
+    const timberSawList = mode !== "sawmill" && canRenderTimberSawList
+      ? global.buildSawList(block, geom, v)
       : null;
 
     return {
+      mode,
       v,
       geom,
       block,
       sideYield,
       packingLayout,
+      timberSawList,
       sawmillCutPlan: latestSawmillCutPlanFromState(),
       step: currentPlanStep(),
     };
@@ -92,6 +99,10 @@
 
     if (canRenderSawOrderStatus) {
       global.renderSawOrderStatus(model);
+    }
+
+    if (canRenderTimberSawList && model.mode !== "sawmill" && model.timberSawList) {
+      global.renderTimberSawList(model.timberSawList);
     }
   };
 
