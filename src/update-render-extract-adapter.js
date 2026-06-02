@@ -46,7 +46,14 @@
 
     if (model.mode === "sawmill") {
       if (canRenderPackingCanvas && model.packingLayout) {
-        global.renderPackingCanvas(model.block, model.geom, model.v, model.packingLayout, model.sawmillCutPlan);
+        global.renderPackingCanvas(
+          model.block,
+          model.geom,
+          model.v,
+          model.packingLayout,
+          model.sawmillCutPlan,
+          model.stepIndex
+        );
       }
 
       if (canRenderSawmillCutPlan && model.sawmillCutPlan) {
