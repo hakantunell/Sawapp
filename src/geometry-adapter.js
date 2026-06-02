@@ -1,8 +1,5 @@
 // src/geometry-adapter.js
 // Inkoppling av geometry-modulen i befintlig app.
-//
-// Den gamla rotfilen app.js får ligga kvar tills vidare, men denna adapter ersätter
-// avgränsade rena geometrihjälpare med implementationer från SawGeometry.
 
 (function installGeometryAdapter(global) {
   if (!global.SawGeometry) {
@@ -10,29 +7,27 @@
     return;
   }
 
-  if (typeof global.computeGeometry === "function") {
-    global.computeGeometryLegacy = global.computeGeometry;
-  }
-  if (typeof global.sideForRotation === "function") {
-    global.sideForRotationLegacy = global.sideForRotation;
-  }
-  if (typeof global.rotatePoint === "function") {
-    global.rotatePointLegacy = global.rotatePoint;
-  }
+  if (typeof global.computeGeometry === "function") global.computeGeometryLegacy = global.computeGeometry;
+  if (typeof global.sideForRotation === "function") global.sideForRotationLegacy = global.sideForRotation;
+  if (typeof global.rotatePoint === "function") global.rotatePointLegacy = global.rotatePoint;
+  if (typeof global.rotatedRectBounds === "function") global.rotatedRectBoundsLegacy = global.rotatedRectBounds;
 
-  global.computeGeometry = function computeGeometry(values) {
+  global.computeGeometry = function(values) {
     return global.SawGeometry.computeLogGeometry(values);
   };
 
-  global.sideForRotation = function sideForRotation(rotationValue) {
+  global.sideForRotation = function(rotationValue) {
     return global.SawGeometry.sideForRotation(rotationValue);
   };
 
-  global.rotatePoint = function rotatePoint(x, y, theta) {
+  global.rotatePoint = function(x, y, theta) {
     return global.SawGeometry.rotatePoint(x, y, theta);
   };
 
-  // Räkna om direkt så att UI och sågplan använder adapter-versionerna även efter sidladdning.
+  global.rotatedRectBounds = function(rect, theta) {
+    return global.SawGeometry.rotatedRectBounds(rect, theta);
+  };
+
   if (typeof global.update === "function") {
     global.update();
   }
