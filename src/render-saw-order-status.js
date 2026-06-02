@@ -59,24 +59,10 @@
     return 0;
   }
 
-  function selectSawListRow(index) {
-    const rows = Array.from(global.document.querySelectorAll("#sawListTable tbody tr"));
-    if (!rows.length) return false;
-
-    const safeIndex = Math.min(Math.max(Number(index) || 0, 0), rows.length - 1);
-
-    // Radklicket är fortfarande den säkra legacy-vägen. Där uppdaterar app.js
-    // sin lexikala currentStepIndex och ritar om sågbilden korrekt.
-    rows[safeIndex].click();
-    return true;
-  }
-
-  function fallbackSetStepAndUpdate(index) {
-    const safeIndex = Math.max(0, Number(index) || 0);
+  function setCurrentStepIndex(index) {
     if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-      global.SawState.setCurrentStepIndex(safeIndex);
+      global.SawState.setCurrentStepIndex(index);
     }
-    if (typeof global.update === "function") global.update();
   }
 
   function navigateBy(delta, model) {
@@ -84,9 +70,9 @@
     if (!length) return;
 
     const nextIndex = (currentStepIndex(model) + delta + length) % length;
-    if (!selectSawListRow(nextIndex)) {
-      fallbackSetStepAndUpdate(nextIndex);
-    }
+    setCurrentStepIndex(nextIndex);
+
+    if (typeof global.update === "function") global.update();
   }
 
   function wireStepControls(model) {
