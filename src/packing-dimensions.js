@@ -42,6 +42,15 @@
     return activePackingDimensionsFromList(dimensionsFromState());
   }
 
+  function activeSideYieldDimensionsFromList(dimensions) {
+    return (Array.isArray(dimensions) ? dimensions : [])
+      .filter(d => d.active && (d.type === "freeWidth" || d.type === "minWidth" || d.wildEdge));
+  }
+
+  function activeSideYieldDimensionsFromGlobal() {
+    return activeSideYieldDimensionsFromList(dimensionsFromState());
+  }
+
   function circleWidthAtY(y, R) {
     if (Math.abs(y) > R) return 0;
     return 2 * Math.sqrt(Math.max(0, R * R - y * y));
@@ -111,6 +120,8 @@
   global.SawPackingDimensions = {
     activePackingDimensionsFromList,
     activePackingDimensionsFromGlobal,
+    activeSideYieldDimensionsFromList,
+    activeSideYieldDimensionsFromGlobal,
     circleWidthAtY,
     dimensionToPackCandidate,
     rectFitsCircle,
