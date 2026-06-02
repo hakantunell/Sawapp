@@ -52,11 +52,25 @@
   }
 
   function setCurrentStepIndex(index) {
+    const safeIndex = Math.max(0, Number(index) || 0);
+
     if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-      global.SawState.setCurrentStepIndex(index);
+      global.SawState.setCurrentStepIndex(safeIndex);
     }
+
+    // Legacy app.js deklarerar currentStepIndex lexikalt. Den är inte samma sak
+    // som window.currentStepIndex, men den kan ändå nås som identifierare från
+    // senare script. Packningscanvasen läser fortfarande denna legacy-variabel.
+    try {
+      if (typeof currentStepIndex !== "undefined") {
+        currentStepIndex = safeIndex;
+      }
+    } catch (e) {
+      // Ignorera om miljön inte exponerar legacy-bindningen.
+    }
+
     if (typeof global.currentStepIndex === "number") {
-      global.currentStepIndex = index;
+      global.currentStepIndex = safeIndex;
     }
   }
 
@@ -64,6 +78,11 @@
     if (model && Number.isFinite(model.stepIndex)) return model.stepIndex;
     if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
       return global.SawState.getCurrentStepIndex();
+    }
+    try {
+      if (typeof currentStepIndex !== "undefined") return currentStepIndex;
+    } catch (e) {
+      // Ignorera om legacy-bindningen saknas.
     }
     return typeof global.currentStepIndex === "number" ? global.currentStepIndex : 0;
   }
