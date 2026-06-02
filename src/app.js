@@ -48,6 +48,7 @@
     "src/render-timber-canvas.js",
     "src/dimensions-editor.js",
     "src/dimensions-editor-adapter.js",
+    "src/dimensions-editor-activation-adapter.js",
     "src/big-step-navigation-fix.js"
   ];
 
