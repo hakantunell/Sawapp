@@ -15,7 +15,7 @@
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
   const canRenderSawOrderStatus = typeof global.renderSawOrderStatus === "function";
   const canRenderTimberSawList = typeof global.renderTimberSawList === "function";
-  const canRenderTimberCanvas = typeof global.renderTimberCanvasFromModule === "function";
+  const canRenderTimberCanvas = typeof global.renderTimberCanvasFromModel === "function";
   const canRenderSupportSideView = typeof global.renderSupportSideViewFromModel === "function";
   const canBuildViewModel = typeof global.buildSawViewModel === "function";
 
@@ -60,7 +60,7 @@
     }
 
     if (canRenderTimberCanvas && model.mode !== "sawmill" && model.sawList) {
-      global.renderTimberCanvasFromModule(model.block, model.geom, model.v, model.sawList);
+      global.renderTimberCanvasFromModel(model);
     }
   };
 
