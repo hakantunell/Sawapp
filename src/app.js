@@ -10,6 +10,7 @@
     "src/block-geometry.js",
     "src/dimension-resolver.js",
     "src/packing-dimensions.js",
+    "src/side-yield.js",
     "src/state.js",
     "src/state-adapter.js",
     "src/inputs.js",
