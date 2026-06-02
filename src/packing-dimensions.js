@@ -3,7 +3,6 @@
 //
 // Detta är ren packningslogik utan DOM-rendering, canvas, currentStepIndex,
 // stödberäkning eller rotations-/svärdspositionering.
-// Modulen är inte aktiv förrän adapter laddas separat.
 
 (function initSawPackingDimensions(global) {
   function effectiveAllowedWaneForDimension(d, v) {
@@ -31,8 +30,16 @@
       });
   }
 
+  function dimensionsFromState() {
+    if (global.SawState && typeof global.SawState.getDimensions === "function") {
+      const dimensions = global.SawState.getDimensions();
+      if (Array.isArray(dimensions)) return dimensions;
+    }
+    return [];
+  }
+
   function activePackingDimensionsFromGlobal() {
-    return activePackingDimensionsFromList(global.dimensions);
+    return activePackingDimensionsFromList(dimensionsFromState());
   }
 
   function circleWidthAtY(y, R) {
