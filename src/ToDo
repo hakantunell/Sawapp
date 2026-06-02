@@ -25,6 +25,7 @@ Förbättringar:
   - animering som visar rotation på stocken
   - Sågsvärdets tjocklek som stämmer bättre överens med "verkligheten", 
     men undersidan på svärdet bör vara markerat för att visa att måtten beräknas däifrån
+  - i "dimension", när man väljer "fri bredd" så borde man gråa ut fältet "bredd"
 
 
 Buggar:
