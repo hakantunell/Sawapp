@@ -11,6 +11,10 @@
   if (typeof global.update !== "function") return;
 
   const canRenderInputVisibility = typeof global.renderInputVisibility === "function";
+  const canRenderPackingCanvas = typeof global.renderPackingCanvas === "function";
+  const canRenderSawmillCutPlan = typeof global.renderSawmillCutPlan === "function";
+  const canRenderPackingResult = typeof global.renderPackingResult === "function";
+  const canRenderSideYield = typeof global.renderSideYield === "function";
   const canRenderCalcDetails = typeof global.renderCalcDetails === "function";
   const canRenderMetrics = typeof global.renderMetrics === "function";
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
@@ -25,7 +29,7 @@
     return;
   }
 
-  if (!canRenderInputVisibility && !canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas && !canRenderSupportSideView) return;
+  if (!canRenderInputVisibility && !canRenderPackingCanvas && !canRenderSawmillCutPlan && !canRenderPackingResult && !canRenderSideYield && !canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas && !canRenderSupportSideView) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
@@ -38,6 +42,22 @@
 
     if (canRenderInputVisibility) {
       global.renderInputVisibility();
+    }
+
+    if (model.mode === "sawmill") {
+      if (canRenderPackingCanvas && model.packingLayout) {
+        global.renderPackingCanvas(model.block, model.geom, model.v, model.packingLayout, model.sawmillCutPlan);
+      }
+
+      if (canRenderSawmillCutPlan && model.sawmillCutPlan) {
+        global.renderSawmillCutPlan(model.sawmillCutPlan);
+      }
+
+      if (canRenderPackingResult) {
+        global.renderPackingResult(model.packingLayout);
+      }
+    } else if (canRenderSideYield) {
+      global.renderSideYield(model.sideYield);
     }
 
     if (canRenderMetrics) {
