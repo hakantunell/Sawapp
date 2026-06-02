@@ -41,6 +41,7 @@
     "src/render-yield-results.js",
     "src/render-calc-details.js",
     "src/render-metrics.js",
+    "src/update-render-extract-adapter.js",
     "src/big-step-navigation-fix.js"
   ];
 
