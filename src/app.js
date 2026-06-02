@@ -40,6 +40,7 @@
     "src/render-sawmill-cut-plan.js",
     "src/render-yield-results.js",
     "src/render-calc-details.js",
+    "src/render-metrics.js",
     "src/big-step-navigation-fix.js"
   ];
 
