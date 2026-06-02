@@ -1,8 +1,7 @@
 // src/render-saw-order-status.js
-// Renderer för statuskortet i sågordningspanelen.
+// Renderer/controller för statuskortet i sågordningspanelen.
 //
-// Passiv modul. Den anropas explicit från adapter/update och ändrar inga
-// beräkningar.
+// Den skriver till samma DOM-yta som legacy update(): #sawOrder.
 
 (function initSawRenderSawOrderStatus(global) {
   function formatMm(value, decimals = 1) {
@@ -10,9 +9,14 @@
     return `${Number(value).toFixed(decimals)} mm`;
   }
 
+  function formatInches(value) {
+    if (typeof global.fmtIn === "function") return global.fmtIn(value);
+    return `${(Number(value) / 25.4).toFixed(2)}\"`;
+  }
+
   function blockLabel(block) {
     if (!block) return "–";
-    return block.resolvedLabel || `${block.width} × ${block.height}`;
+    return block.resolvedLabel || `${block.width}×${block.height}`;
   }
 
   function stepLabel(step) {
@@ -30,30 +34,77 @@
     );
   }
 
-  function planLabel(plan) {
-    const count = Array.isArray(plan) ? plan.length : 0;
-    return count ? `${count} steg (sidobitar först)` : "–";
+  function planLabel(model) {
+    if (!model) return "–";
+    if (Array.isArray(model.sawmillCutPlan) && model.sawmillCutPlan.length) {
+      return `${model.sawmillCutPlan.length} steg (sidobitar först)`;
+    }
+    const sideYieldCount = Array.isArray(model.sideYield) ? model.sideYield.length : 0;
+    return `${sideYieldCount} brädor/paneler`;
+  }
+
+  function activePlanLength(model) {
+    if (!model) return 0;
+    if (Array.isArray(model.activePlan)) return model.activePlan.length;
+    if (Array.isArray(model.sawmillCutPlan) && model.sawmillCutPlan.length) return model.sawmillCutPlan.length;
+    if (Array.isArray(model.sawList)) return model.sawList.length;
+    return 0;
+  }
+
+  function setCurrentStepIndex(index) {
+    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
+      global.SawState.setCurrentStepIndex(index);
+    }
+    if (typeof global.currentStepIndex === "number") {
+      global.currentStepIndex = index;
+    }
+  }
+
+  function currentStepIndex(model) {
+    if (model && Number.isFinite(model.stepIndex)) return model.stepIndex;
+    if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
+      return global.SawState.getCurrentStepIndex();
+    }
+    return typeof global.currentStepIndex === "number" ? global.currentStepIndex : 0;
+  }
+
+  function wireStepControls(model) {
+    const length = activePlanLength(model);
+    if (!length) return;
+
+    const prev = global.document.getElementById("prevStep");
+    const next = global.document.getElementById("nextStep");
+    if (prev) {
+      prev.onclick = () => {
+        setCurrentStepIndex((currentStepIndex(model) - 1 + length) % length);
+        if (typeof global.update === "function") global.update();
+      };
+    }
+    if (next) {
+      next.onclick = () => {
+        setCurrentStepIndex((currentStepIndex(model) + 1) % length);
+        if (typeof global.update === "function") global.update();
+      };
+    }
   }
 
   function renderSawOrderStatus(model) {
-    const el = global.$ ? global.$("sawOrderStatus") : document.getElementById("sawOrderStatus");
-    if (!el) return;
+    const el = global.$ ? global.$("sawOrder") : document.getElementById("sawOrder");
+    if (!el) return false;
 
     const block = model && model.block;
     const step = model && model.step;
-    const plan = model && model.sawmillCutPlan;
 
-    if (!block) {
-      el.innerHTML = `<div class="status-bad">Ingen aktiv dimension ryms i stocken.</div>`;
-      return;
+    if (!block || !step) {
+      el.innerHTML = `<div class="status-bad">Ingen aktiv dimension får plats med nuvarande designdiameter/användbar diameter.</div>`;
+      return true;
     }
 
     const allowedWane = Number.isFinite(block.allowedWane) ? block.allowedWane : 0;
     const requiredDiagonal = Number.isFinite(block.requiredDiagonal) ? block.requiredDiagonal : block.diagonal;
     const diagonal = Number.isFinite(block.diagonal) ? block.diagonal : requiredDiagonal;
-
-    const support1 = step && Number.isFinite(step.rootSupportHeight) ? step.rootSupportHeight : null;
-    const support2 = step && Number.isFinite(step.topSupportHeight) ? step.topSupportHeight : null;
+    const support1 = Number.isFinite(step.rootSupportHeight) ? step.rootSupportHeight : (step.bladeToBed || 0);
+    const support2 = Number.isFinite(step.topSupportHeight) ? step.topSupportHeight : (step.bladeToBed || 0);
 
     el.innerHTML = `
       <div class="status-ok">
@@ -62,11 +113,18 @@
         Krav diagonal: <strong>${formatMm(requiredDiagonal, 1)}</strong> istället för ${formatMm(diagonal, 1)}<br>
         Aktuellt snitt: <strong>${stepLabel(step)}</strong><br>
         Referens: <strong>${referenceLabel(step)}</strong><br>
-        Sågplan: <strong>${planLabel(plan)}</strong><br>
-        ${support1 === null ? "" : `Stöd 1: <strong>${support1.toFixed(0)} mm / ${typeof global.fmtIn === "function" ? global.fmtIn(support1) : (support1 / 25.4).toFixed(2) + "\""}</strong><br>`}
-        ${support2 === null ? "" : `Stöd 2: <strong>${support2.toFixed(0)} mm / ${typeof global.fmtIn === "function" ? global.fmtIn(support2) : (support2 / 25.4).toFixed(2) + "\""}</strong>`}
+        ${model && model.mode === "sawmill" ? "Sågplan" : "Sidoutbyte"}: <strong>${planLabel(model)}</strong><br>
+        Stöd 1: <strong>${support1.toFixed(0)} mm / ${formatInches(support1)}</strong><br>
+        Stöd 2: <strong>${support2.toFixed(0)} mm / ${formatInches(support2)}</strong>
+      </div>
+      <div class="stepControls">
+        <button id="prevStep">← Föregående snitt</button>
+        <button id="nextStep">Nästa snitt →</button>
       </div>
     `;
+
+    wireStepControls(model);
+    return true;
   }
 
   global.SawRenderSawOrderStatus = {
