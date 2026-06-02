@@ -35,6 +35,7 @@
     "src/current-step-sync.js",
     "src/current-step-navigation-sync.js",
     "src/latest-plan-sync.js",
+    "src/render-common.js",
     "src/render-packing-canvas.js",
     "src/render-sawmill-cut-plan.js",
     "src/render-yield-results.js",
