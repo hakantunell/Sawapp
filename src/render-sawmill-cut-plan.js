@@ -2,19 +2,17 @@
 // Renderer för sågverksplanens tabell.
 
 (function initSawRenderSawmillCutPlan(global) {
-  function getCurrentStepIndex() {
+  function getCurrentStepIndex(explicitStepIndex) {
+    if (Number.isFinite(explicitStepIndex)) return explicitStepIndex;
     if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
       return global.SawState.getCurrentStepIndex();
     }
-    return typeof currentStepIndex !== "undefined" ? currentStepIndex : 0;
+    return 0;
   }
 
   function setCurrentStepIndex(index) {
     if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
       global.SawState.setCurrentStepIndex(index);
-    }
-    if (typeof currentStepIndex !== "undefined") {
-      currentStepIndex = index;
     }
   }
 
@@ -23,7 +21,7 @@
     return `${(mm / 25.4).toFixed(2)}"`;
   }
 
-  function renderSawmillCutPlan(plan) {
+  function renderSawmillCutPlan(plan, explicitStepIndex) {
     const table = global.$ ? global.$("sawListTable") : document.getElementById("sawListTable");
     if (!table) return false;
     const tbody = table.querySelector("tbody");
@@ -31,7 +29,7 @@
 
     if (!plan || !plan.length) return false;
 
-    const selectedIndex = getCurrentStepIndex();
+    const selectedIndex = getCurrentStepIndex(explicitStepIndex);
     tbody.innerHTML = "";
 
     for (const s of plan) {
