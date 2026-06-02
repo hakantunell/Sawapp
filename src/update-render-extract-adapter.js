@@ -11,83 +11,31 @@
   if (typeof global.update !== "function") return;
 
   const canRenderCalcDetails = typeof global.renderCalcDetails === "function";
-  const canRenderMetrics = typeof global.renderMetrics === "function" && typeof global.calculateMetrics === "function";
+  const canRenderMetrics = typeof global.renderMetrics === "function";
   const canRenderBigScreenStep = typeof global.renderBigScreenStep === "function";
   const canRenderSawOrderStatus = typeof global.renderSawOrderStatus === "function";
-  const canRenderTimberSawList = typeof global.renderTimberSawList === "function" && typeof global.buildSawList === "function";
-  const canRenderTimberCanvas = typeof global.renderTimberCanvasFromModule === "function" && typeof global.buildSawList === "function";
+  const canRenderTimberSawList = typeof global.renderTimberSawList === "function";
+  const canRenderTimberCanvas = typeof global.renderTimberCanvasFromModule === "function";
+  const canBuildViewModel = typeof global.buildSawViewModel === "function";
+
+  if (!canBuildViewModel) {
+    console.warn("buildSawViewModel saknas. update-render-extract-adapter använder inte utbrutna renderers.");
+    return;
+  }
 
   if (!canRenderCalcDetails && !canRenderMetrics && !canRenderBigScreenStep && !canRenderSawOrderStatus && !canRenderTimberSawList && !canRenderTimberCanvas) return;
 
   global.__updateRenderExtractAdapterInstalled = true;
   const legacyUpdate = global.update;
 
-  function selectedMode() {
-    const el = global.document.getElementById("optimizationMode");
-    return el ? el.value : "mixed";
-  }
-
-  function currentStepIndexFromState() {
-    if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
-      return global.SawState.getCurrentStepIndex();
-    }
-    return typeof global.currentStepIndex === "number" ? global.currentStepIndex : 0;
-  }
-
-  function latestSawmillCutPlanFromState() {
-    if (global.SawState && typeof global.SawState.getLatestSawmillCutPlan === "function") {
-      return global.SawState.getLatestSawmillCutPlan();
-    }
-    return global.latestSawmillCutPlan || null;
-  }
-
-  function currentPlanStep() {
-    const plan = latestSawmillCutPlanFromState();
-    const idx = currentStepIndexFromState();
-    return Array.isArray(plan) && plan.length ? plan[Math.min(Math.max(idx, 0), plan.length - 1)] : null;
-  }
-
-  function recomputeViewModel() {
-    if (typeof global.values !== "function") return null;
-    if (typeof global.computeGeometry !== "function") return null;
-    if (typeof global.findBestCenterBlock !== "function") return null;
-
-    const mode = selectedMode();
-    const v = global.values();
-    const geom = global.computeGeometry(v);
-    const block = global.findBestCenterBlock(geom, v);
-    const sideYield = typeof global.computeSideYield === "function"
-      ? global.computeSideYield(block, geom, v)
-      : [];
-    const packingLayout = mode === "sawmill" && typeof global.computeSawmillPacking === "function"
-      ? global.computeSawmillPacking(geom, v)
-      : null;
-    const timberSawList = mode !== "sawmill" && (canRenderTimberSawList || canRenderTimberCanvas)
-      ? global.buildSawList(block, geom, v)
-      : null;
-
-    return {
-      mode,
-      v,
-      geom,
-      block,
-      sideYield,
-      packingLayout,
-      timberSawList,
-      sawmillCutPlan: latestSawmillCutPlanFromState(),
-      step: currentPlanStep(),
-    };
-  }
-
   global.update = function updateWithExtractedRenderers() {
     legacyUpdate.apply(this, arguments);
 
-    const model = recomputeViewModel();
+    const model = global.buildSawViewModel();
     if (!model) return;
 
     if (canRenderMetrics) {
-      const metrics = global.calculateMetrics(model.block, model.geom, model.sideYield, model.packingLayout);
-      global.renderMetrics(model.geom, metrics);
+      global.renderMetrics(model.geom, model.metrics);
     }
 
     if (canRenderCalcDetails) {
@@ -102,12 +50,12 @@
       global.renderSawOrderStatus(model);
     }
 
-    if (canRenderTimberSawList && model.mode !== "sawmill" && model.timberSawList) {
-      global.renderTimberSawList(model.timberSawList);
+    if (canRenderTimberSawList && model.mode !== "sawmill" && model.sawList) {
+      global.renderTimberSawList(model.sawList);
     }
 
-    if (canRenderTimberCanvas && model.mode !== "sawmill" && model.timberSawList) {
-      global.renderTimberCanvasFromModule(model.block, model.geom, model.v, model.timberSawList);
+    if (canRenderTimberCanvas && model.mode !== "sawmill" && model.sawList) {
+      global.renderTimberCanvasFromModule(model.block, model.geom, model.v, model.sawList);
     }
   };
 
