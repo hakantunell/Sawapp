@@ -63,7 +63,30 @@
     return Number.isFinite(maxY) ? maxY : radiusMm;
   }
 
-  function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
+  function resolveStepIndex(explicitStepIndex, sawmillCutPlan) {
+    const length = Array.isArray(sawmillCutPlan) ? sawmillCutPlan.length : 0;
+    if (!length) return 0;
+
+    if (Number.isFinite(explicitStepIndex)) {
+      return Math.min(Math.max(explicitStepIndex, 0), length - 1);
+    }
+
+    if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
+      return Math.min(Math.max(global.SawState.getCurrentStepIndex(), 0), length - 1);
+    }
+
+    try {
+      if (typeof currentStepIndex !== "undefined") {
+        return Math.min(Math.max(currentStepIndex, 0), length - 1);
+      }
+    } catch (e) {
+      // Ignorera om legacy-bindningen inte är åtkomlig.
+    }
+
+    return 0;
+  }
+
+  function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan, explicitStepIndex) {
     const canvas = global.$ ? global.$("sawCanvas") : document.getElementById("sawCanvas");
     const ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
@@ -76,7 +99,7 @@
     const usableR = geom.usableDiameter / 2 * scale;
     const bedY = outerR;
 
-    const stepIndex = typeof currentStepIndex !== "undefined" ? currentStepIndex : 0;
+    const stepIndex = resolveStepIndex(explicitStepIndex, sawmillCutPlan);
     const planStep = sawmillCutPlan && sawmillCutPlan[stepIndex] ? sawmillCutPlan[stepIndex] : sawmillCutPlan?.[0];
     const theta = planStep ? global.rotationToRadians(planStep.rotationValue || 0) : 0;
     const slabCuts = global.completedSlabCuts(sawmillCutPlan, stepIndex);
