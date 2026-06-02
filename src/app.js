@@ -44,6 +44,7 @@
     "src/update-render-extract-adapter.js",
     "src/render-big-screen-step.js",
     "src/render-saw-order-status.js",
+    "src/render-timber-saw-list.js",
     "src/big-step-navigation-fix.js"
   ];
 
