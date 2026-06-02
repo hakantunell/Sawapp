@@ -8,12 +8,17 @@
   }
 
   if (typeof global.computeGeometry === "function") global.computeGeometryLegacy = global.computeGeometry;
+  if (typeof global.rotationToRadians === "function") global.rotationToRadiansLegacy = global.rotationToRadians;
   if (typeof global.sideForRotation === "function") global.sideForRotationLegacy = global.sideForRotation;
   if (typeof global.rotatePoint === "function") global.rotatePointLegacy = global.rotatePoint;
   if (typeof global.rotatedRectBounds === "function") global.rotatedRectBoundsLegacy = global.rotatedRectBounds;
 
   global.computeGeometry = function(values) {
     return global.SawGeometry.computeLogGeometry(values);
+  };
+
+  global.rotationToRadians = function(rotationValue) {
+    return global.SawGeometry.rotationToRadians(rotationValue);
   };
 
   global.sideForRotation = function(rotationValue) {
