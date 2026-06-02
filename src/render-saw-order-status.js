@@ -51,40 +51,42 @@
     return 0;
   }
 
-  function setCurrentStepIndex(index) {
-    const safeIndex = Math.max(0, Number(index) || 0);
-
-    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-      global.SawState.setCurrentStepIndex(safeIndex);
-    }
-
-    // Legacy app.js deklarerar currentStepIndex lexikalt. Den är inte samma sak
-    // som window.currentStepIndex, men den kan ändå nås som identifierare från
-    // senare script. Packningscanvasen läser fortfarande denna legacy-variabel.
-    try {
-      if (typeof currentStepIndex !== "undefined") {
-        currentStepIndex = safeIndex;
-      }
-    } catch (e) {
-      // Ignorera om miljön inte exponerar legacy-bindningen.
-    }
-
-    if (typeof global.currentStepIndex === "number") {
-      global.currentStepIndex = safeIndex;
-    }
-  }
-
   function currentStepIndex(model) {
     if (model && Number.isFinite(model.stepIndex)) return model.stepIndex;
     if (global.SawState && typeof global.SawState.getCurrentStepIndex === "function") {
       return global.SawState.getCurrentStepIndex();
     }
-    try {
-      if (typeof currentStepIndex !== "undefined") return currentStepIndex;
-    } catch (e) {
-      // Ignorera om legacy-bindningen saknas.
+    return 0;
+  }
+
+  function selectSawListRow(index) {
+    const rows = Array.from(global.document.querySelectorAll("#sawListTable tbody tr"));
+    if (!rows.length) return false;
+
+    const safeIndex = Math.min(Math.max(Number(index) || 0, 0), rows.length - 1);
+
+    // Radklicket är fortfarande den säkra legacy-vägen. Där uppdaterar app.js
+    // sin lexikala currentStepIndex och ritar om sågbilden korrekt.
+    rows[safeIndex].click();
+    return true;
+  }
+
+  function fallbackSetStepAndUpdate(index) {
+    const safeIndex = Math.max(0, Number(index) || 0);
+    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
+      global.SawState.setCurrentStepIndex(safeIndex);
     }
-    return typeof global.currentStepIndex === "number" ? global.currentStepIndex : 0;
+    if (typeof global.update === "function") global.update();
+  }
+
+  function navigateBy(delta, model) {
+    const length = activePlanLength(model);
+    if (!length) return;
+
+    const nextIndex = (currentStepIndex(model) + delta + length) % length;
+    if (!selectSawListRow(nextIndex)) {
+      fallbackSetStepAndUpdate(nextIndex);
+    }
   }
 
   function wireStepControls(model) {
@@ -93,18 +95,8 @@
 
     const prev = global.document.getElementById("prevStep");
     const next = global.document.getElementById("nextStep");
-    if (prev) {
-      prev.onclick = () => {
-        setCurrentStepIndex((currentStepIndex(model) - 1 + length) % length);
-        if (typeof global.update === "function") global.update();
-      };
-    }
-    if (next) {
-      next.onclick = () => {
-        setCurrentStepIndex((currentStepIndex(model) + 1) % length);
-        if (typeof global.update === "function") global.update();
-      };
-    }
+    if (prev) prev.onclick = () => navigateBy(-1, model);
+    if (next) next.onclick = () => navigateBy(1, model);
   }
 
   function renderSawOrderStatus(model) {
