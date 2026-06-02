@@ -1,8 +1,5 @@
 // src/app.js
 // Bootstrap för refaktoreringen.
-//
-// index.html laddar bara denna fil. Den laddar sedan moduler och befintlig huvudkod
-// i en kontrollerad ordning. Sökvägarna är relativa till index.html.
 
 (function bootstrapSawapp() {
   const scripts = [
@@ -29,6 +26,7 @@
     "src/inputs-adapter.js",
     "src/geometry-adapter.js",
     "src/dimensions-adapter.js",
+    "src/dimensions-state-sync.js",
     "src/sawplan.js",
     "fix-v36.js",
     "fix-v37.js",
