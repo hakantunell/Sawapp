@@ -24,6 +24,22 @@
     return Math.min(Math.max(Number(index) || 0, 0), safeLength - 1);
   }
 
+  function cloneDimensions(list) {
+    return (Array.isArray(list) ? list : []).map((d) => ({ ...d }));
+  }
+
+  function syncLegacyDimensionsToState() {
+    if (!global.SawState || typeof global.SawState.setDimensions !== "function") return;
+
+    try {
+      if (typeof dimensions !== "undefined" && Array.isArray(dimensions)) {
+        global.SawState.setDimensions(cloneDimensions(dimensions));
+      }
+    } catch (e) {
+      // Ignorera om legacy-bindningen inte är åtkomlig.
+    }
+  }
+
   function calculateMetrics(block, geom, sideYield, packingLayout) {
     if (typeof global.calculateMetrics === "function") {
       return global.calculateMetrics(block, geom, sideYield, packingLayout);
@@ -50,6 +66,12 @@
     if (typeof global.values !== "function") return null;
     if (typeof global.computeGeometry !== "function") return null;
     if (typeof global.findBestCenterBlock !== "function") return null;
+
+    // Under migrationen finns två dimensionskällor: legacy `dimensions` och
+    // SawState. Beräkningshjälpare för packning läser SawState, medan vissa
+    // UI-vägar fortfarande uppdaterar legacy-listan. Synka därför precis före
+    // beräkning så ViewModel alltid räknar på samma dimensioner som legacy.
+    syncLegacyDimensionsToState();
 
     const mode = selectedMode();
     const v = global.values();
@@ -101,6 +123,7 @@
 
   global.SawViewModel = {
     buildViewModel,
+    syncLegacyDimensionsToState,
   };
 
   global.buildSawViewModel = buildViewModel;
