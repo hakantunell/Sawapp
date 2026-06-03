@@ -29,8 +29,8 @@
       row.className = "dimension-row dimension-row-v22";
       row.innerHTML = `
         <div>${i + 1}</div>
-        <button title="Flytta upp" ${i === 0 ? "disabled" : ""}>↑</button>
-        <button title="Flytta ner" ${i === dimensions.length - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" title="Flytta upp" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" title="Flytta ner" ${i === dimensions.length - 1 ? "disabled" : ""}>↓</button>
         <input type="checkbox" ${d.active ? "checked" : ""} title="Aktiv">
         <select class="dim-type">
           <option value="fixed" ${d.type === "fixed" ? "selected" : ""}>Fyrkant</option>
@@ -52,8 +52,16 @@
       const waneInput = row.querySelector(".dim-wane");
       const wildBox = row.querySelector(".wild-edge");
 
-      up.onclick = () => onMove(i, i - 1);
-      down.onclick = () => onMove(i, i + 1);
+      up.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onMove(i, i - 1);
+      };
+      down.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onMove(i, i + 1);
+      };
       activeBox.onchange = () => onChange(i, { active: activeBox.checked });
       typeSel.onchange = () => {
         const patch = { type: typeSel.value };
