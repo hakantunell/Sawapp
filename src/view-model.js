@@ -40,6 +40,18 @@
     }
   }
 
+  function syncVisibleDimensionsToState() {
+    if (typeof global.syncDimensionsStateFromDom === "function") {
+      const fromDom = global.syncDimensionsStateFromDom();
+      if (Array.isArray(fromDom) && fromDom.length) return fromDom;
+    }
+
+    syncLegacyDimensionsToState();
+    return global.SawState && typeof global.SawState.getDimensions === "function"
+      ? global.SawState.getDimensions()
+      : [];
+  }
+
   function calculateMetrics(block, geom, sideYield, packingLayout) {
     if (typeof global.calculateMetrics === "function") {
       return global.calculateMetrics(block, geom, sideYield, packingLayout);
@@ -67,11 +79,14 @@
     if (typeof global.computeGeometry !== "function") return null;
     if (typeof global.findBestCenterBlock !== "function") return null;
 
-    // Under migrationen finns två dimensionskällor: legacy `dimensions` och
-    // SawState. Beräkningshjälpare för packning läser SawState, medan vissa
-    // UI-vägar fortfarande uppdaterar legacy-listan. Synka därför precis före
-    // beräkning så ViewModel alltid räknar på samma dimensioner som legacy.
-    syncLegacyDimensionsToState();
+    // Under migrationen kan dimensionsdata finnas i tre former:
+    // 1. den synliga dimensionslistan i DOM
+    // 2. SawState.dimensions
+    // 3. legacy `dimensions`
+    //
+    // Den synliga listan är säkrast som källa vid redigering och prioritet/flytt.
+    // Om den inte finns faller vi tillbaka till legacy-listan.
+    syncVisibleDimensionsToState();
 
     const mode = selectedMode();
     const v = global.values();
@@ -124,6 +139,7 @@
   global.SawViewModel = {
     buildViewModel,
     syncLegacyDimensionsToState,
+    syncVisibleDimensionsToState,
   };
 
   global.buildSawViewModel = buildViewModel;
