@@ -13,14 +13,28 @@
     return !!(
       global.SawState &&
       typeof global.SawState.getDimensions === "function" &&
+      typeof global.SawState.setDimensions === "function" &&
       typeof global.SawState.patchDimension === "function" &&
-      typeof global.SawState.moveDimension === "function" &&
       typeof global.renderDimensionsEditor === "function"
     );
   }
 
   function cloneDimensions(list) {
     return (Array.isArray(list) ? list : []).map((d) => ({ ...d }));
+  }
+
+  function reorderedDimensions(list, fromIndex, toIndex) {
+    const next = cloneDimensions(list);
+    const from = Number(fromIndex);
+    const to = Number(toIndex);
+    if (!Number.isInteger(from) || !Number.isInteger(to)) return next;
+    if (from < 0 || from >= next.length) return next;
+    if (to < 0 || to >= next.length) return next;
+    if (from === to) return next;
+
+    const item = next.splice(from, 1)[0];
+    next.splice(to, 0, item);
+    return next;
   }
 
   function syncStateDimensionsToLegacy() {
@@ -66,14 +80,15 @@
     if (!canUseStateEditor()) return false;
 
     return global.renderDimensionsEditor({
-      dimensions: global.SawState.getDimensions(),
+      dimensions: cloneDimensions(global.SawState.getDimensions()),
       onChange(index, patch) {
         global.SawState.patchDimension(index, patch);
         resetStep();
         rerenderAndUpdate();
       },
       onMove(from, to) {
-        global.SawState.moveDimension(from, to);
+        const next = reorderedDimensions(global.SawState.getDimensions(), from, to);
+        global.SawState.setDimensions(next);
         resetStep();
         rerenderAndUpdate();
       },
@@ -83,6 +98,7 @@
   global.SawDimensionsEditorAdapter = {
     renderDimensionsEditorFromState,
     syncStateDimensionsToLegacy,
+    reorderedDimensions,
   };
 
   global.renderDimensionsEditorFromState = renderDimensionsEditorFromState;
