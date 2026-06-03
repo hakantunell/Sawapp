@@ -1,38 +1,38 @@
 // src/update-orchestrator-debug-adapter.js
-// Kontrollerad adapter/feature-flag för att testa den rena ViewModel-baserade
-// update-vägen.
+// Kontrollerad adapter/feature-flag för Sawapps update-läge.
 //
-// Standard: av.
+// Standard: ViewModel-update är på.
 //
-// Aktivera tillfälligt i webbläsarkonsolen:
+// Det innebär att runtime normalt kör:
 //
-//   enableViewModelUpdateDebug()
+//   ViewModel -> renderers
 //
-// Avaktivera:
+// i stället för:
 //
-//   disableViewModelUpdateDebug()
+//   legacy update() -> adapter -> ViewModel -> renderers
 //
-// Aktivera persistent via localStorage:
+// Tillfällig avaktivering via URL:
 //
-//   enableViewModelUpdateFeatureFlag()
+//   ?viewModelUpdate=0
 //
-// Avaktivera persistent:
-//
-//   disableViewModelUpdateFeatureFlag()
-//
-// Aktivera via URL utan localStorage:
+// Tillfällig explicit aktivering via URL:
 //
 //   ?viewModelUpdate=1
 //
-// Avaktivera via URL:
+// Avaktivera persistent i konsolen:
 //
-//   ?viewModelUpdate=0
+//   disableViewModelUpdateFeatureFlag()
+//
+// Aktivera persistent igen:
+//
+//   enableViewModelUpdateFeatureFlag()
 
 (function installUpdateOrchestratorDebugAdapter(global) {
   if (global.__updateOrchestratorDebugAdapterInstalled) return;
   global.__updateOrchestratorDebugAdapterInstalled = true;
 
-  const FLAG_KEY = "sawapp.viewModelUpdate.enabled";
+  const DISABLE_KEY = "sawapp.viewModelUpdate.disabled";
+  const LEGACY_ENABLE_KEY = "sawapp.viewModelUpdate.enabled";
   let legacyUpdate = null;
   let enabled = false;
 
@@ -47,18 +47,21 @@
     return null;
   }
 
-  function readStoredFlag() {
+  function isPersistentlyDisabled() {
     try {
-      return global.localStorage.getItem(FLAG_KEY) === "true";
+      return global.localStorage.getItem(DISABLE_KEY) === "true";
     } catch (e) {
       return false;
     }
   }
 
-  function writeStoredFlag(value) {
+  function setPersistentlyDisabled(value) {
     try {
-      if (value) global.localStorage.setItem(FLAG_KEY, "true");
-      else global.localStorage.removeItem(FLAG_KEY);
+      if (value) global.localStorage.setItem(DISABLE_KEY, "true");
+      else global.localStorage.removeItem(DISABLE_KEY);
+
+      // Rensa gammal opt-in-flagga från tidigare migrationsläge.
+      global.localStorage.removeItem(LEGACY_ENABLE_KEY);
     } catch (e) {
       // Ignorera om localStorage inte är tillgängligt.
     }
@@ -67,7 +70,7 @@
   function shouldAutoEnable() {
     const urlFlag = readUrlFlag();
     if (urlFlag !== null) return urlFlag;
-    return readStoredFlag();
+    return !isPersistentlyDisabled();
   }
 
   function canEnable() {
@@ -99,17 +102,17 @@
     global.__viewModelUpdateDebugEnabled = true;
 
     if (options.persist === true) {
-      writeStoredFlag(true);
+      setPersistentlyDisabled(false);
     }
 
     global.update();
-    console.info("ViewModel-update aktiverad. Kör disableViewModelUpdateDebug() för att återställa.");
+    console.info("ViewModel-update aktiverad.");
     return true;
   }
 
   function disableViewModelUpdateDebug(options = {}) {
     if (options.persist === true) {
-      writeStoredFlag(false);
+      setPersistentlyDisabled(true);
     }
 
     if (!enabled) return true;
@@ -138,7 +141,11 @@
   }
 
   function isViewModelUpdateFeatureFlagStored() {
-    return readStoredFlag();
+    return !isPersistentlyDisabled();
+  }
+
+  function isViewModelUpdatePersistentlyDisabled() {
+    return isPersistentlyDisabled();
   }
 
   global.SawUpdateOrchestratorDebug = {
@@ -148,7 +155,8 @@
     disablePersistent: disableViewModelUpdateFeatureFlag,
     isEnabled: isViewModelUpdateDebugEnabled,
     isPersistent: isViewModelUpdateFeatureFlagStored,
-    flagKey: FLAG_KEY,
+    isPersistentlyDisabled: isViewModelUpdatePersistentlyDisabled,
+    disableKey: DISABLE_KEY,
   };
 
   global.enableViewModelUpdateDebug = enableViewModelUpdateDebug;
@@ -157,6 +165,7 @@
   global.disableViewModelUpdateFeatureFlag = disableViewModelUpdateFeatureFlag;
   global.isViewModelUpdateDebugEnabled = isViewModelUpdateDebugEnabled;
   global.isViewModelUpdateFeatureFlagStored = isViewModelUpdateFeatureFlagStored;
+  global.isViewModelUpdatePersistentlyDisabled = isViewModelUpdatePersistentlyDisabled;
 
   if (shouldAutoEnable()) {
     global.setTimeout(() => enableViewModelUpdateDebug(), 0);
