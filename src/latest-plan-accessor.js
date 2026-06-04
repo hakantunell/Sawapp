@@ -70,6 +70,10 @@
     return legacyPlans;
   }
 
+  function hasLatestPlans() {
+    return hasPlans(getLatestPlans());
+  }
+
   function getPackingLayout() {
     return getLatestPlans().packingLayout || null;
   }
@@ -103,6 +107,7 @@
 
   global.SawLatestPlans = {
     getLatestPlans,
+    hasLatestPlans,
     getPackingLayout,
     getSawmillCutPlan,
     setLatestPlans,
