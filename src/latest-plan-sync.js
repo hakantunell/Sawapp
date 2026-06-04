@@ -37,6 +37,14 @@
     return { packingLayout: null, sawmillCutPlan: null };
   }
 
+  function legacyPlansHaveContent(plans) {
+    return !!(
+      plans &&
+      ((Array.isArray(plans.packingLayout) && plans.packingLayout.length) ||
+       (Array.isArray(plans.sawmillCutPlan) && plans.sawmillCutPlan.length))
+    );
+  }
+
   function syncLatestPlansToState(force) {
     if (!force && isViewModelModeEnabled() && stateHasLatestPlans()) {
       return false;
@@ -45,7 +53,13 @@
     try {
       const legacyPlans = readLegacyPlans();
       if (global.SawLatestPlans && typeof global.SawLatestPlans.setLatestPlans === "function") {
-        global.SawLatestPlans.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
+        if (legacyPlansHaveContent(legacyPlans)) {
+          global.SawLatestPlans.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
+        } else if (typeof global.SawLatestPlans.resetLatestPlans === "function") {
+          global.SawLatestPlans.resetLatestPlans();
+        } else {
+          global.SawLatestPlans.setLatestPlans(null, null);
+        }
       } else {
         global.SawState.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
       }
