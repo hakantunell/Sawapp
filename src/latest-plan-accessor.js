@@ -40,9 +40,7 @@
     try {
       if (typeof latestPackingLayout !== "undefined") packingLayout = latestPackingLayout;
       if (typeof latestSawmillCutPlan !== "undefined") sawmillCutPlan = latestSawmillCutPlan;
-    } catch (e) {
-      // Ignorera om legacy-bindningen inte är åtkomlig.
-    }
+    } catch (e) {}
 
     if (!packingLayout && "latestPackingLayout" in global) {
       packingLayout = global.latestPackingLayout;
@@ -74,6 +72,14 @@
     return hasPlans(getLatestPlans());
   }
 
+  function hasPackingLayout() {
+    return !!getPackingLayout();
+  }
+
+  function hasSawmillCutPlan() {
+    return !!getSawmillCutPlan();
+  }
+
   function getPackingLayout() {
     return getLatestPlans().packingLayout || null;
   }
@@ -87,13 +93,10 @@
       global.SawState.setLatestPlans(packingLayout, sawmillCutPlan);
     }
 
-    // Spegla fortfarande till legacy-globals för kvarvarande app.js-kod.
     try {
       if (typeof latestPackingLayout !== "undefined") latestPackingLayout = packingLayout || null;
       if (typeof latestSawmillCutPlan !== "undefined") latestSawmillCutPlan = sawmillCutPlan || null;
-    } catch (e) {
-      // Ignorera om legacy-bindningen inte är åtkomlig.
-    }
+    } catch (e) {}
 
     if ("latestPackingLayout" in global) global.latestPackingLayout = packingLayout || null;
     if ("latestSawmillCutPlan" in global) global.latestSawmillCutPlan = sawmillCutPlan || null;
@@ -109,9 +112,7 @@
     try {
       if (typeof latestPackingLayout !== "undefined") latestPackingLayout = null;
       if (typeof latestSawmillCutPlan !== "undefined") latestSawmillCutPlan = null;
-    } catch (e) {
-      // Ignorera om legacy-bindningen inte är åtkomlig.
-    }
+    } catch (e) {}
 
     if ("latestPackingLayout" in global) global.latestPackingLayout = null;
     if ("latestSawmillCutPlan" in global) global.latestSawmillCutPlan = null;
@@ -126,6 +127,8 @@
   global.SawLatestPlans = {
     getLatestPlans,
     hasLatestPlans,
+    hasPackingLayout,
+    hasSawmillCutPlan,
     getPackingLayout,
     getSawmillCutPlan,
     setLatestPlans,
