@@ -17,8 +17,8 @@
   }
 
   function latestSawmillCutPlanFallback() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
-      return global.SawLatestPlans.getLatestPlans().sawmillCutPlan || null;
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getSawmillCutPlan === "function") {
+      return global.SawLatestPlans.getSawmillCutPlan();
     }
     if (global.SawState && typeof global.SawState.getLatestSawmillCutPlan === "function") {
       return global.SawState.getLatestSawmillCutPlan();
