@@ -101,8 +101,26 @@
     return getLatestPlans();
   }
 
+  function resetLatestPlans() {
+    if (global.SawState && typeof global.SawState.clearLatestPlans === "function") {
+      global.SawState.clearLatestPlans();
+    }
+
+    try {
+      if (typeof latestPackingLayout !== "undefined") latestPackingLayout = null;
+      if (typeof latestSawmillCutPlan !== "undefined") latestSawmillCutPlan = null;
+    } catch (e) {
+      // Ignorera om legacy-bindningen inte är åtkomlig.
+    }
+
+    if ("latestPackingLayout" in global) global.latestPackingLayout = null;
+    if ("latestSawmillCutPlan" in global) global.latestSawmillCutPlan = null;
+
+    return { packingLayout: null, sawmillCutPlan: null };
+  }
+
   function clearLatestPlans() {
-    return setLatestPlans(null, null);
+    return resetLatestPlans();
   }
 
   global.SawLatestPlans = {
@@ -112,6 +130,7 @@
     getSawmillCutPlan,
     setLatestPlans,
     clearLatestPlans,
+    resetLatestPlans,
     fromState,
     fromLegacyGlobals,
   };
