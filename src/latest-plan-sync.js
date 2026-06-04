@@ -17,6 +17,9 @@
   }
 
   function stateHasLatestPlans() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.hasLatestPlans === "function") {
+      return global.SawLatestPlans.hasLatestPlans();
+    }
     if (typeof global.SawState.hasLatestPlans === "function") {
       return global.SawState.hasLatestPlans();
     }
@@ -26,7 +29,10 @@
     const plan = typeof global.SawState.getLatestSawmillCutPlan === "function"
       ? global.SawState.getLatestSawmillCutPlan()
       : null;
-    return !!(packing || plan);
+    return !!(
+      (Array.isArray(packing) && packing.length) ||
+      (Array.isArray(plan) && plan.length)
+    );
   }
 
   function readLegacyPlans() {
