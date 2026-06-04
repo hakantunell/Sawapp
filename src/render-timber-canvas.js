@@ -26,13 +26,22 @@
     }
   }
 
-  function clearLegacyPackingLayoutForTimberMode() {
-    // Legacy renderTimberCanvas() ritar packningslayout om latestPackingLayout är
-    // satt. I ren ViewModel-väg måste timmerläge säkra att den gamla sågverks-
-    // layouten inte ligger kvar från föregående läge.
+  function clearLatestPlansForTimberMode() {
+    // Primär källa är SawState. Timmerläge ska inte bära med sig en gammal
+    // sågverks-/packningsplan från föregående läge.
+    if (global.SawState && typeof global.SawState.clearLatestPlans === "function") {
+      global.SawState.clearLatestPlans();
+    }
+
+    // Legacy renderTimberCanvas() läser fortfarande latestPackingLayout direkt.
+    // Spegla därför rensningen till legacy-globalen tills canvasen är helt
+    // extraherad.
     try {
       if (typeof latestPackingLayout !== "undefined") {
         latestPackingLayout = null;
+      }
+      if (typeof latestSawmillCutPlan !== "undefined") {
+        latestSawmillCutPlan = null;
       }
     } catch (e) {
       // Ignorera om legacy-bindningen inte är åtkomlig.
@@ -41,12 +50,15 @@
     if ("latestPackingLayout" in global) {
       global.latestPackingLayout = null;
     }
+    if ("latestSawmillCutPlan" in global) {
+      global.latestSawmillCutPlan = null;
+    }
   }
 
   function renderTimberCanvasFromModule(block, geom, values, sawList, stepIndex) {
     if (typeof global.renderTimberCanvas !== "function") return false;
     syncLegacyCurrentStepIndex(stepIndex);
-    clearLegacyPackingLayoutForTimberMode();
+    clearLatestPlansForTimberMode();
     global.renderTimberCanvas(block, geom, values, sawList);
     return true;
   }
@@ -65,6 +77,7 @@
   global.SawRenderTimberCanvas = {
     renderTimberCanvas: renderTimberCanvasFromModule,
     renderTimberCanvasFromModel,
+    clearLatestPlansForTimberMode,
   };
 
   global.renderTimberCanvasFromModule = renderTimberCanvasFromModule;
