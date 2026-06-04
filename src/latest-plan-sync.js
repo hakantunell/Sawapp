@@ -29,16 +29,25 @@
     return !!(packing || plan);
   }
 
+  function readLegacyPlans() {
+    return {
+      packingLayout: typeof latestPackingLayout !== "undefined" ? latestPackingLayout : null,
+      sawmillCutPlan: typeof latestSawmillCutPlan !== "undefined" ? latestSawmillCutPlan : null,
+    };
+  }
+
   function syncLatestPlansToState(force) {
     if (!force && isViewModelModeEnabled() && stateHasLatestPlans()) {
       return false;
     }
 
     try {
-      global.SawState.setLatestPlans(
-        typeof latestPackingLayout !== "undefined" ? latestPackingLayout : null,
-        typeof latestSawmillCutPlan !== "undefined" ? latestSawmillCutPlan : null
-      );
+      const legacyPlans = readLegacyPlans();
+      if (global.SawLatestPlans && typeof global.SawLatestPlans.setLatestPlans === "function") {
+        global.SawLatestPlans.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
+      } else {
+        global.SawState.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
+      }
       return true;
     } catch (error) {
       console.warn("Kunde inte synka latest plan-state till SawState.", error);
