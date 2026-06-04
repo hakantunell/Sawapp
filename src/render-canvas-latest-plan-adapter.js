@@ -16,35 +16,38 @@
   global.__renderCanvasLatestPlanAdapterInstalled = true;
   global.renderCanvasLegacyLatestPlanGlobals = global.renderCanvas;
 
-  function hasPackingLayout() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.hasPackingLayout === "function") {
-      return global.SawLatestPlans.hasPackingLayout();
-    }
-
-    return false;
+  function hasArrayItems(value) {
+    return Array.isArray(value) && value.length > 0;
   }
 
-  function latestPackingLayout() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.getPackingLayout === "function") {
-      return global.SawLatestPlans.getPackingLayout();
+  function freshLegacyPlans() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.fromLegacyGlobals === "function") {
+      return global.SawLatestPlans.fromLegacyGlobals();
     }
 
-    return null;
+    return { packingLayout: null, sawmillCutPlan: null };
   }
 
-  function latestSawmillCutPlan() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.getSawmillCutPlan === "function") {
-      return global.SawLatestPlans.getSawmillCutPlan();
+  function accessorPlans() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
+      return global.SawLatestPlans.getLatestPlans();
     }
 
-    return null;
+    return { packingLayout: null, sawmillCutPlan: null };
+  }
+
+  function currentPlans() {
+    const legacyPlans = freshLegacyPlans();
+    if (hasArrayItems(legacyPlans.packingLayout)) return legacyPlans;
+    return accessorPlans();
   }
 
   function renderCanvasViaLatestPlans(block, geom, v, sawList) {
-    if (hasPackingLayout()) {
-      const packingLayout = latestPackingLayout();
-      const sawmillCutPlan = latestSawmillCutPlan();
+    const plans = currentPlans();
+    const packingLayout = plans.packingLayout || null;
+    const sawmillCutPlan = plans.sawmillCutPlan || null;
 
+    if (hasArrayItems(packingLayout)) {
       global.renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan);
       return;
     }
