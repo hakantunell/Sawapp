@@ -1,9 +1,8 @@
 // src/latest-plan-sync.js
-// Synkar legacy-cache för packningslayout och sågverksplan till SawState.
+// Legacy-fallback för packningslayout och sågverksplan.
 //
-// Detta är ett säkert första steg: legacy app.js fortsätter äga och använda
-// latestPackingLayout/latestSawmillCutPlan. Den här modulen kopierar bara utfallet
-// efter update() till SawState, så vi kan börja flytta läsningar senare.
+// SawState är primär ägare i ViewModel-läge. Den här modulen får därför inte
+// skriva över planer som redan har skapats av ViewModel-kedjan.
 
 (function installLatestPlanSync(global) {
   if (!global.SawState || typeof global.update !== "function") {
@@ -13,23 +12,47 @@
 
   const legacyUpdate = global.update;
 
-  function syncLatestPlansToState() {
+  function isViewModelModeEnabled() {
+    return global.__viewModelUpdateDebugEnabled === true;
+  }
+
+  function stateHasLatestPlans() {
+    if (typeof global.SawState.hasLatestPlans === "function") {
+      return global.SawState.hasLatestPlans();
+    }
+    const packing = typeof global.SawState.getLatestPackingLayout === "function"
+      ? global.SawState.getLatestPackingLayout()
+      : null;
+    const plan = typeof global.SawState.getLatestSawmillCutPlan === "function"
+      ? global.SawState.getLatestSawmillCutPlan()
+      : null;
+    return !!(packing || plan);
+  }
+
+  function syncLatestPlansToState(force) {
+    if (!force && isViewModelModeEnabled() && stateHasLatestPlans()) {
+      return false;
+    }
+
     try {
       global.SawState.setLatestPlans(
         typeof latestPackingLayout !== "undefined" ? latestPackingLayout : null,
         typeof latestSawmillCutPlan !== "undefined" ? latestSawmillCutPlan : null
       );
+      return true;
     } catch (error) {
       console.warn("Kunde inte synka latest plan-state till SawState.", error);
+      return false;
     }
   }
 
   global.update = function updateWithLatestPlanSync() {
     const result = legacyUpdate.apply(this, arguments);
-    syncLatestPlansToState();
+    syncLatestPlansToState(false);
     return result;
   };
 
-  // Synka initialt läge efter att alla moduler och fixar har laddats.
-  syncLatestPlansToState();
+  global.syncLatestPlansToState = syncLatestPlansToState;
+
+  syncLatestPlansToState(false);
 })(window);
