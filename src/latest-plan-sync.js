@@ -83,6 +83,28 @@
     }
   }
 
+  function latestPlanSyncDiagnostics() {
+    const legacyPlans = readLegacyPlans();
+    const statePlans = global.SawState && typeof global.SawState.getLatestPlans === "function"
+      ? global.SawState.getLatestPlans()
+      : null;
+    const accessorPlans = global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function"
+      ? global.SawLatestPlans.getLatestPlans()
+      : null;
+
+    return {
+      viewModelModeEnabled: isViewModelModeEnabled(),
+      legacyHasPlans: legacyPlansHaveContent(legacyPlans),
+      stateHasPlans: stateHasLatestPlans(),
+      accessorHasPlans: global.SawLatestPlans && typeof global.SawLatestPlans.hasLatestPlans === "function"
+        ? global.SawLatestPlans.hasLatestPlans()
+        : false,
+      legacyPlans,
+      statePlans,
+      accessorPlans,
+    };
+  }
+
   global.update = function updateWithLatestPlanSync() {
     const result = legacyUpdate.apply(this, arguments);
     syncLatestPlansToState(false);
@@ -90,6 +112,7 @@
   };
 
   global.syncLatestPlansToState = syncLatestPlansToState;
+  global.latestPlanSyncDiagnostics = latestPlanSyncDiagnostics;
 
   syncLatestPlansToState(false);
 })(window);
