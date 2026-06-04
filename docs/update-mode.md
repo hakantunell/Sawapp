@@ -2,27 +2,9 @@
 
 Sawapp currently supports two update modes.
 
-## Legacy mode
-
-Default mode.
-
-Runtime flow:
-
-```text
-legacy update()
-  ↓
-update-render-extract-adapter
-  ↓
-ViewModel
-  ↓
-extracted renderers
-```
-
-This is the safest mode because legacy `update()` still runs first.
-
 ## ViewModel mode
 
-Feature-flagged mode.
+Default mode.
 
 Runtime flow:
 
@@ -38,78 +20,83 @@ This mode bypasses legacy `update()` and runs:
 SawUpdateOrchestrator.updateFromViewModel()
 ```
 
-It is intended to become the future default once it has been tested enough.
+The legacy update path is still kept as a fallback while the migration is ongoing.
 
-## Temporary activation
+## Legacy fallback mode
 
-From the browser console:
+Runtime flow:
 
-```javascript
-enableViewModelUpdateDebug()
+```text
+legacy update()
+  ↓
+update-render-extract-adapter
+  ↓
+SawUpdateOrchestrator.updateFromViewModel()
 ```
 
-Disable:
+The adapter intentionally reuses the same orchestrator as ViewModel mode so the modular render sequence only exists in one place.
 
-```javascript
-disableViewModelUpdateDebug()
-```
+## Activation and fallback
 
-## Persistent activation
+ViewModel mode is enabled by default.
 
-Enable ViewModel mode across reloads:
-
-```javascript
-enableViewModelUpdateFeatureFlag()
-```
-
-Disable persistent ViewModel mode:
+Disable ViewModel mode from the browser console:
 
 ```javascript
 disableViewModelUpdateFeatureFlag()
 ```
 
-Persistent state is stored in localStorage:
+Enable it again:
 
-```text
-sawapp.viewModelUpdate.enabled
+```javascript
+enableViewModelUpdateFeatureFlag()
 ```
 
-## URL activation
-
-Enable for one URL/session:
+Force ViewModel mode through the URL:
 
 ```text
 ?viewModelUpdate=1
 ```
 
-Disable for one URL/session:
+Force legacy fallback through the URL:
 
 ```text
 ?viewModelUpdate=0
 ```
 
-## Status after initial testing
+Persistent fallback state is stored in localStorage:
+
+```text
+sawapp.viewModelUpdate.disabled
+```
+
+## Status after testing
 
 The ViewModel mode has been manually tested with:
 
 - sawmill/packing optimization
 - timber/block optimization
 - dimensions
+- priority move up/down in the dimensions editor
 - large-screen step view
 - rotation changes
 - step navigation
+- packing layout and side yield rendering
 
-Known issue found and fixed:
+Known migration issues found and fixed:
 
-- timber canvas did not update outside sawmill/packing mode because legacy `renderTimberCanvas()` still reads `currentStepIndex` and `latestPackingLayout`.
-- `src/render-timber-canvas.js` now syncs the legacy step index and clears stale packing layout before calling legacy canvas rendering.
+- Timber canvas did not update outside sawmill/packing mode because legacy `renderTimberCanvas()` still read `currentStepIndex` and `latestPackingLayout`.
+- Sawmill packing could use stale dimensions because `SawState` and legacy `dimensions` diverged.
+- The dimensions editor priority buttons could appear stuck because the visible list and `SawState` were correct, while legacy `dimensions` still had an older order. `SawUpdateOrchestrator` now forces the dimensions editor to render from `SawState` in ViewModel mode.
+
+## Remaining legacy dependencies
+
+These are intentionally still present during the migration:
+
+- `app.js` still contains the original `update()` implementation for fallback.
+- Several legacy globals still exist: `currentStepIndex`, `latestPackingLayout`, `latestSawmillCutPlan`, and `dimensions`.
+- Some legacy canvas functions are still wrapped rather than fully extracted.
 
 ## Safe next step
 
-Keep legacy mode as default until ViewModel mode has been tested over more real saw scenarios.
-
-Once stable:
-
-1. Set ViewModel mode as default.
-2. Keep `?viewModelUpdate=0` / localStorage disable as fallback.
-3. Start shrinking legacy `update()`.
+Continue shrinking legacy `update()` and remove obsolete adapter layers only after the corresponding ViewModel-rendered behavior has been manually tested.
