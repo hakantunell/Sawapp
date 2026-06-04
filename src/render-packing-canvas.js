@@ -63,6 +63,13 @@
     return Number.isFinite(maxY) ? maxY : radiusMm;
   }
 
+  function latestPlansFallback() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
+      return global.SawLatestPlans.getLatestPlans();
+    }
+    return { packingLayout: null, sawmillCutPlan: null };
+  }
+
   function resolveStepIndex(explicitStepIndex, sawmillCutPlan) {
     const length = Array.isArray(sawmillCutPlan) ? sawmillCutPlan.length : 0;
     if (!length) return 0;
@@ -87,7 +94,12 @@
   }
 
   function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan, explicitStepIndex) {
+    const fallback = (!packingLayout || !sawmillCutPlan) ? latestPlansFallback() : null;
+    const effectivePackingLayout = packingLayout || fallback?.packingLayout || null;
+    const effectiveSawmillCutPlan = sawmillCutPlan || fallback?.sawmillCutPlan || null;
+
     const canvas = global.$ ? global.$("sawCanvas") : document.getElementById("sawCanvas");
+    if (!canvas) return false;
     const ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
@@ -99,14 +111,14 @@
     const usableR = geom.usableDiameter / 2 * scale;
     const bedY = outerR;
 
-    const stepIndex = resolveStepIndex(explicitStepIndex, sawmillCutPlan);
-    const planStep = sawmillCutPlan && sawmillCutPlan[stepIndex] ? sawmillCutPlan[stepIndex] : sawmillCutPlan?.[0];
+    const stepIndex = resolveStepIndex(explicitStepIndex, effectiveSawmillCutPlan);
+    const planStep = effectiveSawmillCutPlan && effectiveSawmillCutPlan[stepIndex] ? effectiveSawmillCutPlan[stepIndex] : effectiveSawmillCutPlan?.[0];
     const theta = planStep ? global.rotationToRadians(planStep.rotationValue || 0) : 0;
-    const slabCuts = global.completedSlabCuts(sawmillCutPlan, stepIndex);
+    const slabCuts = global.completedSlabCuts(effectiveSawmillCutPlan, stepIndex);
 
     const packingBottom = global.remainingPackingBoundsWithSlabCuts(
-      packingLayout,
-      sawmillCutPlan,
+      effectivePackingLayout,
+      effectiveSawmillCutPlan,
       stepIndex,
       planStep ? planStep.rotationValue : 0
     );
@@ -141,8 +153,8 @@
 
     global.drawRemovedSlabs(ctx, slabCuts, outerR, scale);
 
-    const done = global.completedPackingSources(sawmillCutPlan, stepIndex);
-    (packingLayout || []).forEach((r, idx) => {
+    const done = global.completedPackingSources(effectiveSawmillCutPlan, stepIndex);
+    (effectivePackingLayout || []).forEach((r, idx) => {
       const cx0 = r.x + r.w / 2;
       const cy0 = r.y + r.h / 2;
       if (done.has(r) || !global.pointKeptBySlabCuts(cx0, cy0, slabCuts)) return;
@@ -231,6 +243,7 @@
     }
 
     ctx.restore();
+    return true;
   }
 
   global.SawRenderPacking = {
