@@ -1,9 +1,11 @@
 // src/render-canvas-latest-plan-adapter.js
-// Adapter som gör legacy renderCanvas() oberoende av direkta latest*-globals.
+// Ersätter legacy renderCanvas() med en SawLatestPlans-baserad variant.
 //
-// Själva canvas-renderingen lämnas oförändrad. Den här adaptern väljer bara
-// mellan packningscanvas och timmercavas via SawLatestPlans i stället för att
-// renderCanvas() ska läsa latestPackingLayout/latestSawmillCutPlan direkt.
+// app.js innehåller fortfarande en äldre renderCanvas() som läser
+// latestPackingLayout/latestSawmillCutPlan direkt. Under migrationen låter vi den
+// funktionen finnas kvar, men den används inte efter att denna adapter har laddats.
+// När app.js kan ändras kirurgiskt kan legacy-funktionen ersättas helt och denna
+// adapter tas bort.
 
 (function installRenderCanvasLatestPlanAdapter(global) {
   if (global.__renderCanvasLatestPlanAdapterInstalled) return;
@@ -38,7 +40,7 @@
     return null;
   }
 
-  global.renderCanvas = function renderCanvasViaLatestPlans(block, geom, v, sawList) {
+  function renderCanvasViaLatestPlans(block, geom, v, sawList) {
     if (hasPackingLayout()) {
       const packingLayout = latestPackingLayout();
       const sawmillCutPlan = latestSawmillCutPlan();
@@ -48,6 +50,12 @@
     }
 
     global.renderTimberCanvas(block, geom, v, sawList);
+  }
+
+  global.renderCanvas = renderCanvasViaLatestPlans;
+
+  global.SawRenderCanvasLatestPlanAdapter = {
+    renderCanvasViaLatestPlans,
   };
 
   if (typeof global.update === "function") {
