@@ -14,18 +14,25 @@
   global.__renderCanvasLatestPlanAdapterInstalled = true;
   global.renderCanvasLegacyLatestPlanGlobals = global.renderCanvas;
 
-  function latestPlans() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
-      return global.SawLatestPlans.getLatestPlans();
+  function latestPackingLayout() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getPackingLayout === "function") {
+      return global.SawLatestPlans.getPackingLayout();
     }
 
-    return { packingLayout: null, sawmillCutPlan: null };
+    return null;
+  }
+
+  function latestSawmillCutPlan() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getSawmillCutPlan === "function") {
+      return global.SawLatestPlans.getSawmillCutPlan();
+    }
+
+    return null;
   }
 
   global.renderCanvas = function renderCanvasViaLatestPlans(block, geom, v, sawList) {
-    const plans = latestPlans();
-    const packingLayout = plans.packingLayout || null;
-    const sawmillCutPlan = plans.sawmillCutPlan || null;
+    const packingLayout = latestPackingLayout();
+    const sawmillCutPlan = latestSawmillCutPlan();
 
     if (packingLayout && packingLayout.length) {
       global.renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan);
