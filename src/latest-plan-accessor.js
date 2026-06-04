@@ -55,8 +55,12 @@
     };
   }
 
+  function hasArrayItems(value) {
+    return Array.isArray(value) && value.length > 0;
+  }
+
   function hasPlans(plans) {
-    return !!(plans && (plans.packingLayout || plans.sawmillCutPlan));
+    return !!(plans && (hasArrayItems(plans.packingLayout) || hasArrayItems(plans.sawmillCutPlan)));
   }
 
   function getLatestPlans() {
@@ -73,11 +77,11 @@
   }
 
   function hasPackingLayout() {
-    return !!getPackingLayout();
+    return hasArrayItems(getPackingLayout());
   }
 
   function hasSawmillCutPlan() {
-    return !!getSawmillCutPlan();
+    return hasArrayItems(getSawmillCutPlan());
   }
 
   function getPackingLayout() {
