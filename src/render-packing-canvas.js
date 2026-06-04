@@ -65,10 +65,10 @@
 
   function latestPlansFallback() {
     return {
-      packingLayout: global.SawLatestPlans && typeof global.SawLatestPlans.getPackingLayout === "function"
+      packingLayout: global.SawLatestPlans && typeof global.SawLatestPlans.hasPackingLayout === "function" && global.SawLatestPlans.hasPackingLayout()
         ? global.SawLatestPlans.getPackingLayout()
         : null,
-      sawmillCutPlan: global.SawLatestPlans && typeof global.SawLatestPlans.getSawmillCutPlan === "function"
+      sawmillCutPlan: global.SawLatestPlans && typeof global.SawLatestPlans.hasSawmillCutPlan === "function" && global.SawLatestPlans.hasSawmillCutPlan()
         ? global.SawLatestPlans.getSawmillCutPlan()
         : null,
     };
