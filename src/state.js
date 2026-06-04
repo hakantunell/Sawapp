@@ -120,13 +120,23 @@
     return state.latestSawmillCutPlan;
   }
 
-  function setLatestPlans(packingLayout, sawmillCutPlan) {
-    state.latestPackingLayout = packingLayout || null;
-    state.latestSawmillCutPlan = sawmillCutPlan || null;
+  function getLatestPlans() {
     return {
       latestPackingLayout: state.latestPackingLayout,
       latestSawmillCutPlan: state.latestSawmillCutPlan,
+      packingLayout: state.latestPackingLayout,
+      sawmillCutPlan: state.latestSawmillCutPlan,
     };
+  }
+
+  function setLatestPlans(packingLayout, sawmillCutPlan) {
+    state.latestPackingLayout = packingLayout || null;
+    state.latestSawmillCutPlan = sawmillCutPlan || null;
+    return getLatestPlans();
+  }
+
+  function hasLatestPlans() {
+    return !!(state.latestPackingLayout || state.latestSawmillCutPlan);
   }
 
   function clearLatestPlans() {
@@ -150,7 +160,9 @@
     setLatestPackingLayout,
     getLatestSawmillCutPlan,
     setLatestSawmillCutPlan,
+    getLatestPlans,
     setLatestPlans,
+    hasLatestPlans,
     clearLatestPlans,
   };
 })(window);
