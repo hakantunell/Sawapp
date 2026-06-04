@@ -55,11 +55,15 @@
   }
 
   function setLatestPlans(packingLayout, sawmillCutPlan) {
-    if (global.SawState && typeof global.SawState.setLatestPlans === "function") {
-      global.SawState.setLatestPlans(packingLayout, sawmillCutPlan);
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.setLatestPlans === "function") {
+      return global.SawLatestPlans.setLatestPlans(packingLayout, sawmillCutPlan);
     }
-    if ("latestPackingLayout" in global) global.latestPackingLayout = packingLayout || null;
-    if ("latestSawmillCutPlan" in global) global.latestSawmillCutPlan = sawmillCutPlan || null;
+
+    if (global.SawState && typeof global.SawState.setLatestPlans === "function") {
+      return global.SawState.setLatestPlans(packingLayout, sawmillCutPlan);
+    }
+
+    return { packingLayout: packingLayout || null, sawmillCutPlan: sawmillCutPlan || null };
   }
 
   function buildViewModel() {
