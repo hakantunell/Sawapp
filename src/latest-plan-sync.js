@@ -17,12 +17,19 @@
   }
 
   function stateHasLatestPlans() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.hasLatestPlans === "function") {
-      return global.SawLatestPlans.hasLatestPlans();
+    const statePlans = global.SawState && typeof global.SawState.getLatestPlans === "function"
+      ? global.SawState.getLatestPlans()
+      : null;
+
+    if (statePlans) {
+      return !!(
+        (Array.isArray(statePlans.packingLayout) && statePlans.packingLayout.length) ||
+        (Array.isArray(statePlans.sawmillCutPlan) && statePlans.sawmillCutPlan.length) ||
+        (Array.isArray(statePlans.latestPackingLayout) && statePlans.latestPackingLayout.length) ||
+        (Array.isArray(statePlans.latestSawmillCutPlan) && statePlans.latestSawmillCutPlan.length)
+      );
     }
-    if (typeof global.SawState.hasLatestPlans === "function") {
-      return global.SawState.hasLatestPlans();
-    }
+
     const packing = typeof global.SawState.getLatestPackingLayout === "function"
       ? global.SawState.getLatestPackingLayout()
       : null;
