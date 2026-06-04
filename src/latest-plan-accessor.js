@@ -59,6 +59,14 @@
     return fromLegacyGlobals();
   }
 
+  function getPackingLayout() {
+    return getLatestPlans().packingLayout || null;
+  }
+
+  function getSawmillCutPlan() {
+    return getLatestPlans().sawmillCutPlan || null;
+  }
+
   function setLatestPlans(packingLayout, sawmillCutPlan) {
     if (global.SawState && typeof global.SawState.setLatestPlans === "function") {
       global.SawState.setLatestPlans(packingLayout, sawmillCutPlan);
@@ -84,6 +92,8 @@
 
   global.SawLatestPlans = {
     getLatestPlans,
+    getPackingLayout,
+    getSawmillCutPlan,
     setLatestPlans,
     clearLatestPlans,
     fromState,
