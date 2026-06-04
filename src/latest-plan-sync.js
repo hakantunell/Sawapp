@@ -58,6 +58,10 @@
     );
   }
 
+  function plansHaveSamePresence(left, right) {
+    return legacyPlansHaveContent(left) === legacyPlansHaveContent(right);
+  }
+
   function syncLatestPlansToState(force) {
     if (!force && isViewModelModeEnabled() && stateHasLatestPlans()) {
       return false;
@@ -92,7 +96,7 @@
       ? global.SawLatestPlans.getLatestPlans()
       : null;
 
-    return {
+    const diagnostics = {
       viewModelModeEnabled: isViewModelModeEnabled(),
       legacyHasPlans: legacyPlansHaveContent(legacyPlans),
       stateHasPlans: stateHasLatestPlans(),
@@ -103,6 +107,12 @@
       statePlans,
       accessorPlans,
     };
+
+    diagnostics.legacyAndStatePresenceMatch = plansHaveSamePresence(legacyPlans, statePlans);
+    diagnostics.legacyAndAccessorPresenceMatch = plansHaveSamePresence(legacyPlans, accessorPlans);
+    diagnostics.stateAndAccessorPresenceMatch = plansHaveSamePresence(statePlans, accessorPlans);
+
+    return diagnostics;
   }
 
   global.update = function updateWithLatestPlanSync() {
