@@ -1,11 +1,15 @@
 // src/latest-plan-accessor.js
 // Gemensam åtkomstpunkt för senaste sågverks-/packningsplan.
 //
-// Primär källa är SawState. Legacy-globals används bara som fallback under
-// migrationen, tills latestPackingLayout/latestSawmillCutPlan kan tas bort helt
-// från app.js.
+// Primär källa är SawState i ViewModel-läge. Legacy-globals används som fallback
+// under migrationen och som primär källa när ViewModel-update har stängts av för
+// felsökning.
 
 (function initSawLatestPlanAccessor(global) {
+  function isViewModelModeEnabled() {
+    return global.__viewModelUpdateDebugEnabled === true;
+  }
+
   function fromState() {
     if (global.SawState && typeof global.SawState.getLatestPlans === "function") {
       const plans = global.SawState.getLatestPlans();
@@ -53,10 +57,17 @@
     };
   }
 
+  function hasPlans(plans) {
+    return !!(plans && (plans.packingLayout || plans.sawmillCutPlan));
+  }
+
   function getLatestPlans() {
     const statePlans = fromState();
-    if (statePlans.packingLayout || statePlans.sawmillCutPlan) return statePlans;
-    return fromLegacyGlobals();
+    const legacyPlans = fromLegacyGlobals();
+
+    if (!isViewModelModeEnabled() && hasPlans(legacyPlans)) return legacyPlans;
+    if (hasPlans(statePlans)) return statePlans;
+    return legacyPlans;
   }
 
   function getPackingLayout() {
