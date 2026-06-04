@@ -30,10 +30,11 @@
   }
 
   function readLegacyPlans() {
-    return {
-      packingLayout: typeof latestPackingLayout !== "undefined" ? latestPackingLayout : null,
-      sawmillCutPlan: typeof latestSawmillCutPlan !== "undefined" ? latestSawmillCutPlan : null,
-    };
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.fromLegacyGlobals === "function") {
+      return global.SawLatestPlans.fromLegacyGlobals();
+    }
+
+    return { packingLayout: null, sawmillCutPlan: null };
   }
 
   function syncLatestPlansToState(force) {
