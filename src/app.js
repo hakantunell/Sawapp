@@ -12,6 +12,7 @@
     "src/packing-dimensions.js",
     "src/side-yield.js",
     "src/state.js",
+    "src/latest-plan-accessor.js",
     "src/state-adapter.js",
     "src/inputs.js",
     "src/geometry.js",
