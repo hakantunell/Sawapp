@@ -64,10 +64,14 @@
   }
 
   function latestPlansFallback() {
-    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
-      return global.SawLatestPlans.getLatestPlans();
-    }
-    return { packingLayout: null, sawmillCutPlan: null };
+    return {
+      packingLayout: global.SawLatestPlans && typeof global.SawLatestPlans.getPackingLayout === "function"
+        ? global.SawLatestPlans.getPackingLayout()
+        : null,
+      sawmillCutPlan: global.SawLatestPlans && typeof global.SawLatestPlans.getSawmillCutPlan === "function"
+        ? global.SawLatestPlans.getSawmillCutPlan()
+        : null,
+    };
   }
 
   function resolveStepIndex(explicitStepIndex, sawmillCutPlan) {
