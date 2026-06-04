@@ -20,6 +20,13 @@
     const model = global.buildSawViewModel();
     if (!model) return null;
 
+    // Dimensionslistan ska alltid ritas från SawState i ViewModel-läge.
+    // Annars kan legacy dimensions-listan fortsätta leva parallellt och ge
+    // intrycket att prioritet/flytt har fastnat eller hoppar tillbaka.
+    if (hasFunction("renderDimensionsEditorFromState")) {
+      global.renderDimensionsEditorFromState();
+    }
+
     if (hasFunction("renderInputVisibility")) {
       global.renderInputVisibility();
     }
