@@ -46,6 +46,7 @@
     "src/render-saw-order-status.js",
     "src/render-timber-saw-list.js",
     "src/render-timber-canvas.js",
+    "src/render-canvas-latest-plan-adapter.js",
     "src/render-support-side-view.js",
     "src/render-input-visibility.js",
     "src/timber-saw-list.js",
