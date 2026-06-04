@@ -1,8 +1,10 @@
 // src/latest-plan-sync.js
-// Legacy-fallback för packningslayout och sågverksplan.
+// Migreringsbrygga för packningslayout och sågverksplan.
 //
-// SawState är primär ägare i ViewModel-läge. Den här modulen får därför inte
-// skriva över planer som redan har skapats av ViewModel-kedjan.
+// app.js skriver fortfarande latestPackingLayout/latestSawmillCutPlan direkt.
+// Den här modulen läser dessa legacy-värden efter update() och för över dem till
+// SawLatestPlans/SawState så att övriga moduler kan använda accessorlagret.
+// När app.js skriver direkt till SawLatestPlans kan den här modulen tas bort.
 
 (function installLatestPlanSync(global) {
   if (!global.SawState || typeof global.update !== "function") {
