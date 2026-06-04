@@ -16,23 +16,35 @@
     }
   }
 
+  function latestSawmillCutPlanFallback() {
+    if (global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function") {
+      return global.SawLatestPlans.getLatestPlans().sawmillCutPlan || null;
+    }
+    if (global.SawState && typeof global.SawState.getLatestSawmillCutPlan === "function") {
+      return global.SawState.getLatestSawmillCutPlan();
+    }
+    return null;
+  }
+
   function formatInches(mm) {
     if (typeof global.fmtIn === "function") return global.fmtIn(mm);
     return `${(mm / 25.4).toFixed(2)}"`;
   }
 
   function renderSawmillCutPlan(plan, explicitStepIndex) {
+    const effectivePlan = Array.isArray(plan) && plan.length ? plan : latestSawmillCutPlanFallback();
+
     const table = global.$ ? global.$("sawListTable") : document.getElementById("sawListTable");
     if (!table) return false;
     const tbody = table.querySelector("tbody");
     if (!tbody) return false;
 
-    if (!plan || !plan.length) return false;
+    if (!effectivePlan || !effectivePlan.length) return false;
 
     const selectedIndex = getCurrentStepIndex(explicitStepIndex);
     tbody.innerHTML = "";
 
-    for (const s of plan) {
+    for (const s of effectivePlan) {
       const tr = document.createElement("tr");
       tr.className = (s.step - 1) === selectedIndex ? "selected-step" : "";
 
