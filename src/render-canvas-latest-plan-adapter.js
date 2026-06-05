@@ -42,6 +42,22 @@
     return accessorPlans();
   }
 
+  function renderCanvasPlanDiagnostics() {
+    const legacyPlans = freshLegacyPlans();
+    const plansFromAccessor = accessorPlans();
+    const selectedPlans = currentPlans();
+
+    return {
+      usesFreshLegacyPlans: selectedPlans === legacyPlans,
+      legacyHasPackingLayout: hasArrayItems(legacyPlans.packingLayout),
+      accessorHasPackingLayout: hasArrayItems(plansFromAccessor.packingLayout),
+      selectedHasPackingLayout: hasArrayItems(selectedPlans.packingLayout),
+      legacyPlans,
+      accessorPlans: plansFromAccessor,
+      selectedPlans,
+    };
+  }
+
   function renderCanvasViaLatestPlans(block, geom, v, sawList) {
     const plans = currentPlans();
     const packingLayout = plans.packingLayout || null;
@@ -59,7 +75,10 @@
 
   global.SawRenderCanvasLatestPlanAdapter = {
     renderCanvasViaLatestPlans,
+    renderCanvasPlanDiagnostics,
   };
+
+  global.renderCanvasPlanDiagnostics = renderCanvasPlanDiagnostics;
 
   if (typeof global.update === "function") {
     global.update();
