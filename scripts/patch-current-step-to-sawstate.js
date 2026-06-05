@@ -188,12 +188,18 @@ replaceStrict(
   `  if (sawList.length) { window.SawState.moveCurrentStep(1, sawList.length); update(); }`
 );
 
-// Ersätt resterande rena läsningar i indexuttryck efter att lokala const currentStepIndex
-// införts i update(). Det här ska inte finnas kvar efter patchen.
-const remaining = next.match(/currentStepIndex/g) || [];
-if (remaining.length) {
-  console.error(`currentStepIndex finns fortfarande kvar ${remaining.length} gånger. app.js ändrades inte.`);
-  process.exit(1);
+const forbiddenPatterns = [
+  /let\s+currentStepIndex\s*=/,
+  /currentStepIndex\s*=/,
+  /currentStepIndex\+\+/,
+  /currentStepIndex--/,
+];
+
+for (const pattern of forbiddenPatterns) {
+  if (pattern.test(next)) {
+    console.error(`Legacy currentStepIndex-skrivning/deklaration finns kvar: ${pattern}. app.js ändrades inte.`);
+    process.exit(1);
+  }
 }
 
 if (next === original) {
@@ -202,4 +208,4 @@ if (next === original) {
 }
 
 fs.writeFileSync(appPath, next, "utf8");
-console.log("app.js uppdaterad: currentStepIndex migrerad till SawState.");
+console.log("app.js uppdaterad: currentStepIndex-skrivningar migrerade till SawState.");
