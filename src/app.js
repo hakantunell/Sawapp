@@ -11,6 +11,7 @@
     "src/dimension-resolver.js",
     "src/packing-dimensions.js",
     "src/side-yield.js",
+    "src/default-dimensions.js",
     "src/state.js",
     "src/latest-plan-accessor.js",
     "src/state-adapter.js",
