@@ -5,21 +5,27 @@
 // currentStepIndex är nu bryggad via current-step-state-bridge.js.
 
 (function initSawState(global) {
-  const defaultDimensions = [
-    { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: 0 },
-    { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: 0 },
-    { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: 0 },
-    { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: 0 },
-    { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: 0 },
-    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: 0 },
-    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: 20 },
-  ];
+  function defaultDimensions() {
+    if (global.SawDefaultDimensions && typeof global.SawDefaultDimensions.getDefaultDimensions === "function") {
+      return global.SawDefaultDimensions.getDefaultDimensions();
+    }
+
+    return [
+      { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: 0 },
+      { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: 0 },
+      { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: 0 },
+      { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: 0 },
+      { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: 0 },
+      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: 0 },
+      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: 20 },
+    ];
+  }
 
   const state = {
     currentStepIndex: 0,
     latestPackingLayout: null,
     latestSawmillCutPlan: null,
-    dimensions: defaultDimensions.map(d => ({ ...d })),
+    dimensions: defaultDimensions(),
   };
 
   function cloneDimension(d) {
@@ -71,7 +77,7 @@
   }
 
   function resetDimensions() {
-    state.dimensions = defaultDimensions.map(d => ({ ...d }));
+    state.dimensions = defaultDimensions();
     return state.dimensions;
   }
 
