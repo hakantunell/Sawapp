@@ -18,8 +18,7 @@ function setupTabs() {
 
 
 let currentStepIndex = 0;
-let latestPackingLayout = null;
-let latestSawmillCutPlan = null;
+
 
 let dimensions = [
   { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: false ? 20 : 0 },
@@ -1346,8 +1345,10 @@ function renderTimberCanvas(block, geom, v, sawList) {
   ctx.setLineDash([]);
 
   // Sågverk / packning: rita hela packningslayouten i stället för bara centrumblocket.
-  if (latestPackingLayout && latestPackingLayout.length) {
-    latestPackingLayout.forEach((r, idx) => {
+  const packingLayoutForCanvas = window.SawLatestPlans.getPackingLayout();
+
+  if (packingLayoutForCanvas && packingLayoutForCanvas.length) {
+    packingLayoutForCanvas.forEach((r, idx) => {
       ctx.fillStyle = r.type === "center" ? "rgba(74, 222, 128, .42)" : (r.wildEdge ? "rgba(250, 204, 21, .45)" : "rgba(96, 165, 250, .35)");
       ctx.strokeStyle = r.type === "center" ? "#16a34a" : (r.wildEdge ? "#ca8a04" : "#2563eb");
       ctx.lineWidth = r.type === "center" ? 3 : 2;
@@ -1715,10 +1716,11 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
 }
 
 function renderCanvas(block, geom, v, sawList) {
-  if (latestPackingLayout && latestPackingLayout.length) {
-    renderPackingCanvas(block, geom, v, latestPackingLayout, latestSawmillCutPlan);
+  if (window.SawRenderCanvasLatestPlanAdapter && typeof window.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans === "function") {
+    window.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans(block, geom, v, sawList);
     return;
   }
+
   renderTimberCanvas(block, geom, v, sawList);
 }
 
@@ -1829,8 +1831,7 @@ function update() {
     <tr><td>Krav diagonal valt block</td><td>${block ? fmtMm(block.requiredDiagonal,1) : "–"}</td></tr>
   `;
 
-  latestPackingLayout = packingLayout;
-  latestSawmillCutPlan = sawmillCutPlan;
+  window.SawLatestPlans.setLatestPlans(packingLayout, sawmillCutPlan);
   if (packingLayout) renderPackingResult(packingLayout); else renderSideYield(sideYield);
   renderCanvas(block, geom, v, sawList);
   if (!renderSawmillCutPlan(sawmillCutPlan)) renderSawList(sawList);
