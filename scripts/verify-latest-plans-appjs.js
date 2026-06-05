@@ -5,11 +5,14 @@
 //   node scripts/verify-latest-plans-appjs.js
 //
 // Syfte:
-// Verifierar att app.js inte längre har direkta läsningar eller skrivningar av
-// latestPackingLayout/latestSawmillCutPlan efter att patch-scriptet har körts.
+// Verifierar att de två första app.js-migreringarna är gjorda:
 //
-// Deklarationerna tillåts fortfarande i detta steg eftersom de behövs som
-// legacy-fallback tills nästa migreringssteg är testat.
+// 1. renderCanvas() läser inte längre latestPackingLayout/latestSawmillCutPlan direkt.
+// 2. update() skriver via SawLatestPlans.setLatestPlans(...) när accessorn finns.
+//
+// OBS: Det kan fortfarande finnas andra direkta latest*-användningar i app.js.
+// De ska hanteras i separata små steg efter att de första två migrationerna är
+// verifierade och browsertestade.
 
 const fs = require("fs");
 const path = require("path");
@@ -17,49 +20,66 @@ const path = require("path");
 const appPath = path.resolve(__dirname, "..", "app.js");
 const source = fs.readFileSync(appPath, "utf8");
 
-const allowed = new Set([
-  "let latestPackingLayout = null;",
-  "let latestSawmillCutPlan = null;",
-  "latestPackingLayout = packingLayout;",
-  "latestSawmillCutPlan = sawmillCutPlan;",
-]);
-
-const checks = [
+const forbiddenBlocks = [
   {
-    name: "legacy renderCanvas condition",
-    pattern: "if (latestPackingLayout && latestPackingLayout.length)",
+    name: "legacy renderCanvas block",
+    pattern: `function renderCanvas(block, geom, v, sawList) {
+  if (latestPackingLayout && latestPackingLayout.length) {
+    renderPackingCanvas(block, geom, v, latestPackingLayout, latestSawmillCutPlan);
+    return;
+  }
+  renderTimberCanvas(block, geom, v, sawList);
+}`,
   },
   {
-    name: "legacy renderPackingCanvas arguments",
-    pattern: "renderPackingCanvas(block, geom, v, latestPackingLayout, latestSawmillCutPlan)",
-  },
-  {
-    name: "direct latestPackingLayout write without fallback block",
-    pattern: "  latestPackingLayout = packingLayout;\n  latestSawmillCutPlan = sawmillCutPlan;",
+    name: "direct latest plan write block",
+    pattern: `  latestPackingLayout = packingLayout;
+  latestSawmillCutPlan = sawmillCutPlan;`,
   },
 ];
 
-const failures = checks.filter((check) => source.includes(check.pattern));
+const requiredBlocks = [
+  {
+    name: "renderCanvas delegates to SawRenderCanvasLatestPlanAdapter",
+    pattern: `window.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans(block, geom, v, sawList);`,
+  },
+  {
+    name: "update writes through SawLatestPlans.setLatestPlans",
+    pattern: `window.SawLatestPlans.setLatestPlans(packingLayout, sawmillCutPlan);`,
+  },
+];
 
-const directOccurrences = source
-  .split(/\r?\n/)
-  .map((line, index) => ({ line, number: index + 1 }))
-  .filter(({ line }) => line.includes("latestPackingLayout") || line.includes("latestSawmillCutPlan"))
-  .filter(({ line }) => !allowed.has(line.trim()))
-  .filter(({ line }) => !line.includes("SawLatestPlans"));
+const failures = [];
 
-if (failures.length || directOccurrences.length) {
+for (const block of forbiddenBlocks) {
+  if (source.includes(block.pattern)) {
+    failures.push(`Kvarvarande förbjudet block: ${block.name}`);
+  }
+}
+
+for (const block of requiredBlocks) {
+  if (!source.includes(block.pattern)) {
+    failures.push(`Saknar förväntat migrerat block: ${block.name}`);
+  }
+}
+
+if (failures.length) {
   console.error("Verifieringen misslyckades.");
-
   for (const failure of failures) {
-    console.error(`- Hittade kvarvarande mönster: ${failure.name}`);
+    console.error(`- ${failure}`);
   }
-
-  for (const occurrence of directOccurrences) {
-    console.error(`- Rad ${occurrence.number}: ${occurrence.line}`);
-  }
-
   process.exit(1);
 }
 
-console.log("OK: app.js har inga direkta latest*-läsningar/skrivningar utöver tillåten legacy-fallback.");
+const remainingLatestLines = source
+  .split(/\r?\n/)
+  .map((line, index) => ({ line, number: index + 1 }))
+  .filter(({ line }) => line.includes("latestPackingLayout") || line.includes("latestSawmillCutPlan"));
+
+console.log("OK: de två första app.js-migreringarna är gjorda.");
+if (remainingLatestLines.length) {
+  console.log("Kvarvarande latest*-referenser att hantera i senare steg:");
+  for (const occurrence of remainingLatestLines) {
+    console.log(`- Rad ${occurrence.number}: ${occurrence.line}`);
+  }
+}
