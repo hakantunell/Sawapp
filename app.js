@@ -1687,23 +1687,7 @@ function renderSawList(sawList) {
 
 
 function renderSupportSideView(step, geom) {
-  const s1 = $("support1Label");
-  const s2 = $("support2Label");
-  const view = $("supportSideView");
-  if (!s1 || !s2 || !view || !step) return;
-
-  const h1 = step.rootSupportHeight ?? step.bladeToBed ?? 0;
-  const h2 = step.topSupportHeight ?? step.bladeToBed ?? 0;
-  s1.textContent = `Stöd 1: ${h1.toFixed(0)} mm / ${fmtIn(h1)}`;
-  s2.textContent = `Stöd 2: ${h2.toFixed(0)} mm / ${fmtIn(h2)}`;
-
-  const log = view.querySelector(".logSide");
-  if (log && geom) {
-    const d1 = geom.support1Diameter || 0;
-    const d2 = geom.support2Diameter || 0;
-    log.style.setProperty("--d1", `${Math.max(18, Math.min(70, d1 / 5))}px`);
-    log.style.setProperty("--d2", `${Math.max(18, Math.min(70, d2 / 5))}px`);
-  }
+  return window.SawRenderSupportSideView.renderSupportSideView(step, geom);
 }
 
 function update() {
