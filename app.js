@@ -17,20 +17,6 @@ function setupTabs() {
 }
 
 
-let currentStepIndex = 0;
-
-
-let dimensions = [
-  { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: false ? 20 : 0 },
-  { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: false ? 20 : 0 },
-  { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: false ? 20 : 0 },
-
-  { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: false ? 20 : 0 },
-  { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: false ? 20 : 0 },
-
-  { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: false ? 20 : 0 },
-  { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: true ? 20 : 0 },
-];
 
 function values() {
   return {
@@ -176,7 +162,7 @@ function requiredDiagonalWithWane(width, height, allowedCornerWane) {
 
 function findBestCenterBlock(geom, v) {
   const mode = $("optimizationMode") ? $("optimizationMode").value : "mixed";
-  let active = dimensions.filter(d => d.active);
+  let active = window.SawState.getDimensions().filter(d => d.active);
 
   if (mode === "timber") active = active.filter(d => d.type === "fixed");
   if (mode === "plank") active = active.filter(d => d.type === "freeWidth");
@@ -520,9 +506,10 @@ function shouldSupportOnBlockFace(block, sawList, currentStepIndex, rotationValu
 }
 
 function supportBottomForStep(block, geom, sawList, currentStepIndex) {
-  const step = sawList[currentStepIndex] || sawList[0];
+  const stepIndex = window.SawState.getCurrentStepIndex();
+  const step = sawList[stepIndex] || sawList[0];
   const rotationValue = step ? step.rotationValue : 0;
-  const planes = completedCutPlanes(block, sawList, currentStepIndex);
+  const planes = completedCutPlanes(block, sawList, stepIndex);
 
   // Om den nedåtriktade blockytan redan är sågad ska blockets plana yta ligga på bädden.
   if (shouldSupportOnBlockFace(block, sawList, currentStepIndex, rotationValue)) {
@@ -616,12 +603,12 @@ function buildSawList(block, geom, v) {
 
 
 function activeSideYieldDimensions() {
-  return dimensions.filter(d => d.active && (d.type === "freeWidth" || d.type === "minWidth" || d.wildEdge));
+  return window.SawState.getDimensions().filter(d => d.active && (d.type === "freeWidth" || d.type === "minWidth" || d.wildEdge));
 }
 
 
 function activePackingDimensions() {
-  return dimensions
+  return window.SawState.getDimensions()
     .filter(d => d.active)
     .map((d, index) => ({ ...d, priorityIndex: index }))
     .filter(d => {
@@ -1104,45 +1091,12 @@ function buildSawmillCutPlan(packingLayout, block, geom, v) {
 }
 
 function renderSawmillCutPlan(plan) {
-  const table = $("sawListTable");
-  if (!table) return false;
-  const tbody = table.querySelector("tbody");
-  if (!tbody) return false;
-
-  if (!plan || !plan.length) return false;
-
-  tbody.innerHTML = "";
-  for (const s of plan) {
-    const tr = document.createElement("tr");
-    tr.className = (s.step - 1) === currentStepIndex ? "selected-step" : "";
-    const action =
-      s.kind === "slab" ? "Ta bort ytterdel" :
-      s.kind === "side" ? "Frigör " + s.label :
-      "Blocka " + s.label;
-    const ref =
-      s.kind === "slab" ? "Yttersnitt" :
-      s.kind === "side" ? "Planksnitt utan rotation" :
-      "Kärna sist";
-
-    tr.innerHTML = `
-      <td>${s.step}</td>
-      <td>${s.rotation}</td>
-      <td>${action}</td>
-      <td>${ref}</td>
-      <td><strong>${s.rootSupportHeight.toFixed(0)} mm</strong></td>
-      <td><strong>${s.topSupportHeight.toFixed(0)} mm</strong></td>
-      <td><strong>${fmtIn(s.rootSupportHeight)} / ${fmtIn(s.topSupportHeight)}</strong></td>
-      <td>${s.note}</td>
-    `;
-    tr.onclick = () => { currentStepIndex = s.step - 1; update(); };
-    tbody.appendChild(tr);
-  }
-
-  return true;
+  return window.SawRenderSawmillCutPlan.renderSawmillCutPlan(plan);
 }
 
 function renderDimensions() {
   const list = $("dimensionList");
+  const dimensions = window.SawState.getDimensions();
   list.innerHTML = "";
   dimensions.forEach((d, i) => {
     const row = document.createElement("div");
@@ -1172,29 +1126,29 @@ function renderDimensions() {
     const waneInput = row.querySelector(".dim-wane");
     const wildBox = row.querySelector(".wild-edge");
 
-    up.onclick = () => { [dimensions[i-1], dimensions[i]] = [dimensions[i], dimensions[i-1]]; currentStepIndex = 0; update(); };
-    down.onclick = () => { [dimensions[i+1], dimensions[i]] = [dimensions[i], dimensions[i+1]]; currentStepIndex = 0; update(); };
-    activeBox.onchange = () => { d.active = activeBox.checked; currentStepIndex = 0; update(); };
+    up.onclick = () => { [dimensions[i-1], dimensions[i]] = [dimensions[i], dimensions[i-1]]; window.SawState.resetCurrentStepIndex(); update(); };
+    down.onclick = () => { [dimensions[i+1], dimensions[i]] = [dimensions[i], dimensions[i+1]]; window.SawState.resetCurrentStepIndex(); update(); };
+    activeBox.onchange = () => { d.active = activeBox.checked; window.SawState.resetCurrentStepIndex(); update(); };
     typeSel.onchange = () => {
       d.type = typeSel.value;
       if (d.type === "freeWidth") d.width = 0;
       if (d.type === "minWidth") d.minWidth = d.minWidth || d.width || 100;
-      currentStepIndex = 0;
+      window.SawState.resetCurrentStepIndex();
       update();
     };
-    heightInput.onchange = () => { d.height = +heightInput.value || 0; currentStepIndex = 0; update(); };
+    heightInput.onchange = () => { d.height = +heightInput.value || 0; window.SawState.resetCurrentStepIndex(); update(); };
     widthInput.onchange = () => {
       const val = +widthInput.value || 0;
       if (d.type === "minWidth") d.minWidth = val;
       else d.width = val;
-      currentStepIndex = 0;
+      window.SawState.resetCurrentStepIndex();
       update();
     };
-    waneInput.onchange = () => { d.waneMm = +waneInput.value || 0; currentStepIndex = 0; update(); };
+    waneInput.onchange = () => { d.waneMm = +waneInput.value || 0; window.SawState.resetCurrentStepIndex(); update(); };
     wildBox.onchange = () => {
       d.wildEdge = wildBox.checked;
       if (d.wildEdge && !d.waneMm) d.waneMm = 20;
-      currentStepIndex = 0;
+      window.SawState.resetCurrentStepIndex();
       update();
     };
 
@@ -1287,16 +1241,17 @@ function renderTimberCanvas(block, geom, v, sawList) {
   const usableR = geom.usableDiameter/2 * scale;
   const barkPx = v.bark * scale;
 
-  const step = sawList[currentStepIndex] || sawList[0];
+  const stepIndex = window.SawState.getCurrentStepIndex();
+  const step = sawList[stepIndex] || sawList[0];
   const theta = step && !step.isFirstCut ? rotationToRadians(step.rotationValue) : 0;
-  const planes = completedCutPlanes(block, sawList, currentStepIndex);
+  const planes = completedCutPlanes(block, sawList, stepIndex);
 
   // v15:
   // Om en redan sågad blockyta ligger nedåt efter rotation, ska den plana blockytan
   // ligga på bädden. Annars vilar stocken på kvarvarande rundstock/spill.
   const bedY = outerR;
   let bottomLocal;
-  if (shouldSupportOnBlockFace(block, sawList, currentStepIndex, step ? step.rotationValue : 0)) {
+  if (shouldSupportOnBlockFace(block, sawList, stepIndex, step ? step.rotationValue : 0)) {
     bottomLocal = blockBottomAfterRotation(block, step ? step.rotationValue : 0) * scale;
   } else {
     bottomLocal = retainedShapeBottomAfterRotation(outerR, step ? step.rotationValue : 0, planes, scale);
@@ -1599,11 +1554,12 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
   const usableR = geom.usableDiameter/2 * scale;
   const bedY = outerR;
 
-  const planStep = sawmillCutPlan && sawmillCutPlan[currentStepIndex] ? sawmillCutPlan[currentStepIndex] : sawmillCutPlan?.[0];
+  const stepIndex = window.SawState.getCurrentStepIndex();
+  const planStep = sawmillCutPlan && sawmillCutPlan[stepIndex] ? sawmillCutPlan[stepIndex] : sawmillCutPlan?.[0];
   const theta = planStep ? rotationToRadians(planStep.rotationValue || 0) : 0;
 
-  const slabCuts = completedSlabCuts(sawmillCutPlan, currentStepIndex);
-  const supportBottom = remainingPackingBoundsWithSlabCuts(packingLayout, sawmillCutPlan, currentStepIndex, planStep ? planStep.rotationValue : 0);
+  const slabCuts = completedSlabCuts(sawmillCutPlan, stepIndex);
+  const supportBottom = remainingPackingBoundsWithSlabCuts(packingLayout, sawmillCutPlan, stepIndex, planStep ? planStep.rotationValue : 0);
   const yShift = bedY - supportBottom * scale;
 
   ctx.save();
@@ -1633,7 +1589,7 @@ function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
   drawRemovedSlabs(ctx, slabCuts, outerR, scale);
 
   // Rita kvarvarande layout.
-  const done = completedPackingSources(sawmillCutPlan, currentStepIndex);
+  const done = completedPackingSources(sawmillCutPlan, stepIndex);
   packingLayout.forEach((r, idx) => {
     const cx0 = r.x + r.w / 2;
     const cy0 = r.y + r.h / 2;
@@ -1726,24 +1682,7 @@ function renderCanvas(block, geom, v, sawList) {
 
 
 function renderSawList(sawList) {
-  const tbody = $("sawListTable").querySelector("tbody");
-  tbody.innerHTML = "";
-  for (const s of sawList) {
-    const tr = document.createElement("tr");
-    tr.className = (s.step - 1) === currentStepIndex ? "selected-step" : "";
-    tr.innerHTML = `
-      <td>${s.step}</td>
-      <td>${s.rotation}</td>
-      <td>${s.cut}</td>
-      <td>${s.reference}</td>
-      <td><strong>${s.rootSupportHeight.toFixed(0)} mm</strong></td>
-      <td><strong>${s.topSupportHeight.toFixed(0)} mm</strong></td>
-      <td><strong>${fmtIn(s.rootSupportHeight)} / ${fmtIn(s.topSupportHeight)}</strong></td>
-      <td>${s.note}${Math.abs(s.supportHeightDiff) > 0.1 ? `<br><span class="hint">Skillnad rot–topp: ${s.supportHeightDiff.toFixed(0)} mm</span>` : ""}</td>
-    `;
-    tr.onclick = () => { currentStepIndex = s.step - 1; update(); };
-    tbody.appendChild(tr);
-  }
+  return window.SawRenderTimberSawList.renderTimberSawList(sawList);
 }
 
 
@@ -1778,7 +1717,7 @@ function update() {
   const packingLayout = $("optimizationMode") && $("optimizationMode").value === "sawmill" ? computeSawmillPacking(geom, v) : null;
   const sawmillCutPlan = packingLayout ? buildSawmillCutPlan(packingLayout, block, geom, v) : null;
   const activePlanLength = sawmillCutPlan ? sawmillCutPlan.length : sawList.length;
-  if (currentStepIndex >= activePlanLength) currentStepIndex = 0;
+  if (window.SawState.getCurrentStepIndex() >= activePlanLength) window.SawState.resetCurrentStepIndex();
 
   const sideArea = packingLayout ? packingLayout.reduce((sum, r) => sum + (r.w * r.h / 1e6), 0) : (sideYield ? sideYield.reduce((sum, s) => sum + (s.width * s.thickness / 1e6), 0) : 0);
   const sawnArea = block ? (block.width * block.height / 1e6 + sideArea) : 0;
@@ -1795,6 +1734,7 @@ function update() {
   if (!block) {
     order.innerHTML = `<div class="status-bad">Ingen aktiv dimension får plats med nuvarande designdiameter/användbar diameter.</div>`;
   } else {
+    const currentStepIndex = window.SawState.getCurrentStepIndex();
     const step = sawmillCutPlan ? sawmillCutPlan[currentStepIndex] : sawList[currentStepIndex];
     order.innerHTML = `
       <div class="status-ok">
@@ -1812,11 +1752,12 @@ function update() {
         <button id="nextStep">Nästa snitt →</button>
       </div>
     `;
-    $("prevStep").onclick = () => { currentStepIndex = (currentStepIndex - 1 + activePlanLength) % activePlanLength; update(); };
-    $("nextStep").onclick = () => { currentStepIndex = (currentStepIndex + 1) % activePlanLength; update(); };
+    $("prevStep").onclick = () => { window.SawState.moveCurrentStep(-1, activePlanLength); update(); };
+    $("nextStep").onclick = () => { window.SawState.moveCurrentStep(1, activePlanLength); update(); };
   }
 
   const displayPlanForSupport = sawmillCutPlan || sawList;
+  const currentStepIndex = window.SawState.getCurrentStepIndex();
   const displayStepForSupport = displayPlanForSupport[currentStepIndex] || displayPlanForSupport[0];
   renderSupportSideView(displayStepForSupport, geom);
 
@@ -1837,8 +1778,9 @@ function update() {
   if (!renderSawmillCutPlan(sawmillCutPlan)) renderSawList(sawList);
 
   const displayPlan = sawmillCutPlan || sawList;
-  if (displayPlan[currentStepIndex]) {
-    const step = displayPlan[currentStepIndex];
+  const currentStepIndexForBigStep = window.SawState.getCurrentStepIndex();
+  if (displayPlan[currentStepIndexForBigStep]) {
+    const step = displayPlan[currentStepIndexForBigStep];
     $("bigStep").textContent = `Steg ${step.step}`;
     $("bigHeight").textContent = `Stöd 1 ${step.rootSupportHeight.toFixed(0)} mm / ${fmtIn(step.rootSupportHeight)} · Stöd 2 ${step.topSupportHeight.toFixed(0)} mm / ${fmtIn(step.topSupportHeight)}`;
     $("bigRotation").textContent = `Rotation ${step.rotation} – ${step.cut}`;
@@ -1852,22 +1794,14 @@ function sawListText() {
 }
 
 for (const id of ["rootDiameter","topDiameter","rootEndDiameter","topEndDiameter","logLength","sweep","supportDistance","bark","kerf","margin","cornerWane","profileRadius","rotationPreset","manualRotation","optimizationMode"]) {
-  $(id).addEventListener("input", () => { currentStepIndex = 0; update(); });
-  $(id).addEventListener("change", () => { currentStepIndex = 0; update(); });
+  $(id).addEventListener("input", () => { window.SawState.resetCurrentStepIndex(); update(); });
+  $(id).addEventListener("change", () => { window.SawState.resetCurrentStepIndex(); update(); });
 }
 
-$("addDimension").onclick = () => { dimensions.push({active:false,type:"freeWidth",width:0,height:30,minWidth:0,wildEdge:false}); update(); };
+$("addDimension").onclick = () => { window.SawState.getDimensions().push({active:false,type:"freeWidth",width:0,height:30,minWidth:0,wildEdge:false}); update(); };
 $("presetTimber").onclick = () => {
-  dimensions = [
-    { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: false ? 20 : 0 },
-    { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: true ? 20 : 0 },
-  ];
-  currentStepIndex = 0;
+  window.SawState.resetDimensions();
+  window.SawState.resetCurrentStepIndex();
   update();
 };
 $("printSawList").onclick = () => window.print();
@@ -1881,12 +1815,12 @@ $("openBigScreen").onclick = () => $("bigScreen").classList.toggle("hidden");
 const bigPrev = $("bigPrevStep");
 if (bigPrev) bigPrev.onclick = () => {
   const v = values(), geom = computeGeometry(v), block = findBestCenterBlock(geom, v), sawList = buildSawList(block, geom, v);
-  if (sawList.length) { currentStepIndex = (currentStepIndex - 1 + activePlanLength) % activePlanLength; update(); }
+  if (sawList.length) { window.SawState.moveCurrentStep(-1, sawList.length); update(); }
 };
 const bigNext = $("bigNextStep");
 if (bigNext) bigNext.onclick = () => {
   const v = values(), geom = computeGeometry(v), block = findBestCenterBlock(geom, v), sawList = buildSawList(block, geom, v);
-  if (sawList.length) { currentStepIndex = (currentStepIndex + 1) % activePlanLength; update(); }
+  if (sawList.length) { window.SawState.moveCurrentStep(1, sawList.length); update(); }
 };
 setupTabs();
 
