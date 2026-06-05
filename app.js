@@ -1779,13 +1779,7 @@ function update() {
 
   const displayPlan = sawmillCutPlan || sawList;
   const currentStepIndexForBigStep = window.SawState.getCurrentStepIndex();
-  if (displayPlan[currentStepIndexForBigStep]) {
-    const step = displayPlan[currentStepIndexForBigStep];
-    $("bigStep").textContent = `Steg ${step.step}`;
-    $("bigHeight").textContent = `Stöd 1 ${step.rootSupportHeight.toFixed(0)} mm / ${fmtIn(step.rootSupportHeight)} · Stöd 2 ${step.topSupportHeight.toFixed(0)} mm / ${fmtIn(step.topSupportHeight)}`;
-    $("bigRotation").textContent = `Rotation ${step.rotation} – ${step.cut}`;
-    $("bigReference").textContent = step.reference;
-  }
+  renderBigScreenStep(displayPlan[currentStepIndexForBigStep] || displayPlan[0]);
 }
 
 function sawListText() {
