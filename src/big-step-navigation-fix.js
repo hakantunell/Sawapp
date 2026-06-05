@@ -18,10 +18,9 @@
 
   function moveBigStep(delta) {
     const len = activePlanLengthFromDom();
-    currentStepIndex = (currentStepIndex + Number(delta || 0) + len) % len;
 
-    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-      global.SawState.setCurrentStepIndex(currentStepIndex);
+    if (global.SawState && typeof global.SawState.moveCurrentStep === "function") {
+      global.SawState.moveCurrentStep(Number(delta || 0), len);
     }
 
     if (typeof global.update === "function") {
@@ -29,6 +28,7 @@
     }
   }
 
+ 
   const prev = byId("bigPrevStep");
   if (prev) {
     prev.onclick = () => moveBigStep(-1);
