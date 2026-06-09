@@ -1,25 +1,24 @@
 // src/latest-plan-sync.js
 // Migreringsbrygga för packningslayout och sågverksplan.
 //
-// app.js skriver fortfarande latestPackingLayout/latestSawmillCutPlan direkt.
-// Den här modulen läser dessa legacy-värden efter update() och för över dem till
-// SawLatestPlans/SawState så att övriga moduler kan använda accessorlagret.
-// När app.js skriver direkt till SawLatestPlans kan den här modulen tas bort.
+// Tidigare wrappade den här modulen update() direkt. Under den nya laddordningen
+// kan update() laddas senare, och ViewModel/UpdateContext skriver redan latest
+// plans via SawLatestPlans. Därför är modulen nu passiv: den exponerar sync- och
+// diagnostikfunktioner utan att kräva att update() finns vid laddning.
 
 (function installLatestPlanSync(global) {
-  if (!global.SawState || typeof global.update !== "function") {
-    console.warn("SawState eller update() saknas. latest-plan-sync aktiveras inte.");
-    return;
+  function hasState() {
+    return !!global.SawState;
   }
-
-  const legacyUpdate = global.update;
 
   function isViewModelModeEnabled() {
     return global.__viewModelUpdateDebugEnabled === true;
   }
 
   function stateHasLatestPlans() {
-    const statePlans = global.SawState && typeof global.SawState.getLatestPlans === "function"
+    if (!hasState()) return false;
+
+    const statePlans = typeof global.SawState.getLatestPlans === "function"
       ? global.SawState.getLatestPlans()
       : null;
 
@@ -38,6 +37,7 @@
     const plan = typeof global.SawState.getLatestSawmillCutPlan === "function"
       ? global.SawState.getLatestSawmillCutPlan()
       : null;
+
     return !!(
       (Array.isArray(packing) && packing.length) ||
       (Array.isArray(plan) && plan.length)
@@ -65,6 +65,8 @@
   }
 
   function syncLatestPlansToState(force) {
+    if (!hasState()) return false;
+
     if (!force && isViewModelModeEnabled() && stateHasLatestPlans()) {
       return false;
     }
@@ -79,7 +81,7 @@
         } else {
           global.SawLatestPlans.setLatestPlans(null, null);
         }
-      } else {
+      } else if (typeof global.SawState.setLatestPlans === "function") {
         global.SawState.setLatestPlans(legacyPlans.packingLayout, legacyPlans.sawmillCutPlan);
       }
       return true;
@@ -91,7 +93,7 @@
 
   function latestPlanSyncDiagnostics() {
     const legacyPlans = readLegacyPlans();
-    const statePlans = global.SawState && typeof global.SawState.getLatestPlans === "function"
+    const statePlans = hasState() && typeof global.SawState.getLatestPlans === "function"
       ? global.SawState.getLatestPlans()
       : null;
     const accessorPlans = global.SawLatestPlans && typeof global.SawLatestPlans.getLatestPlans === "function"
@@ -117,14 +119,10 @@
     return diagnostics;
   }
 
-  global.update = function updateWithLatestPlanSync() {
-    const result = legacyUpdate.apply(this, arguments);
-    syncLatestPlansToState(false);
-    return result;
-  };
-
   global.syncLatestPlansToState = syncLatestPlansToState;
   global.latestPlanSyncDiagnostics = latestPlanSyncDiagnostics;
 
-  syncLatestPlansToState(false);
+  if (hasState()) {
+    syncLatestPlansToState(false);
+  }
 })(window);
