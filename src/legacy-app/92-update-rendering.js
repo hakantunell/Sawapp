@@ -2,11 +2,27 @@
 // Samlad rendering för legacy update-flödet.
 
 (function initSawUpdateRendering(global) {
+  function hasItems(value) {
+    return Array.isArray(value) && value.length > 0;
+  }
+
   function renderCanvasForContext(context) {
     if (!context) return;
 
     if (global.SawRenderCanvasLatestPlanAdapter && typeof global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans === "function") {
       global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans(context.block, context.geom, context.v, context.sawList);
+      return;
+    }
+
+    if (hasItems(context.packingLayout) && typeof global.renderPackingCanvas === "function") {
+      global.renderPackingCanvas(
+        context.block,
+        context.geom,
+        context.v,
+        context.packingLayout,
+        context.sawmillCutPlan,
+        context.stepIndex
+      );
       return;
     }
 
