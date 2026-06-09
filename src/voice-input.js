@@ -51,11 +51,14 @@
   }
 
   function extractNumber(text) {
-    const digitMatch = text.match(/-?\d+(?:[\.,]\d+)?/);
-    if (digitMatch) return Number(digitMatch[0].replace(",", "."));
+    const digitMatches = [...text.matchAll(/-?\d+(?:[\.,]\d+)?/g)];
+    if (digitMatches.length) {
+      // Använd sista talet så att "stöd1 320" inte tolkas som värdet 1.
+      return Number(digitMatches[digitMatches.length - 1][0].replace(",", "."));
+    }
 
     const words = text.split(/\s+/);
-    for (let i = 0; i < words.length; i += 1) {
+    for (let i = words.length - 1; i >= 0; i -= 1) {
       const value = parseNumberToken(words[i]);
       if (value !== null) return value;
     }
@@ -140,7 +143,7 @@
     instance.onstart = () => {
       listening = true;
       updateButtonState();
-      setStatus("Lyssnar… säg t.ex. “stöd ett 320” eller “längd 4500”.", "listening");
+      setStatus("Lyssnar… säg t.ex. “stöd1 320”, “stöd2 300” eller “längd 4500”.", "listening");
     };
 
     instance.onend = () => {
@@ -162,7 +165,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd två 300”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300”.`, "warn");
         }
       }
     };
@@ -213,7 +216,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg t.ex. “stöd ett 320”, “stöd två 300”, “rot 340”, “topp 290”, “längd 4500”, “krokighet 10”.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg t.ex. “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”, “längd 4500”, “krokighet 10”. Rot och topp är frivilliga extra mätvärden.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
