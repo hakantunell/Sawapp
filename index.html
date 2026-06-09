@@ -9,19 +9,19 @@
 <main class="tabLayout">
 <section id="stockTab" class="tabPage active"><div class="twoCol">
 <section class="panel"><h2>Stock</h2><p class="hint">Värden som mäts för varje stock.</p><div class="grid2">
-<label>Diameter stöd 1 <input id="rootDiameter" type="number" value="320" step="1"><span>mm</span></label>
-<label>Diameter stöd 2 <input id="topDiameter" type="number" value="300" step="1"><span>mm</span></label>
+<label>Diameter stöd 1 <input id="rootDiameter" type="number" value="0" step="1"><span>mm</span></label>
+<label>Diameter stöd 2 <input id="topDiameter" type="number" value="0" step="1"><span>mm</span></label>
           <label>Rotända, valfritt
-            <input id="rootEndDiameter" type="number" value="" step="1" placeholder="valfritt">
+            <input id="rootEndDiameter" type="number" value="0" step="1" placeholder="valfritt">
             <span>mm, används för mer noggrann avsmalning</span>
           </label>
           <label>Toppända, valfritt
-            <input id="topEndDiameter" type="number" value="" step="1" placeholder="valfritt">
+            <input id="topEndDiameter" type="number" value="0" step="1" placeholder="valfritt">
             <span>mm, används för mer noggrann avsmalning</span>
           </label>
-<label>Stocklängd <input id="logLength" type="number" value="4500" step="10"><span>mm</span></label>
-<label>Krokighet / snöravvikelse <input id="sweep" type="number" value="10" step="1"><span>mm</span></label>
-<label>Barktjocklek <input id="bark" type="number" value="12" step="1"><span>mm</span></label>
+<label>Stocklängd <input id="logLength" type="number" value="0" step="10"><span>mm</span></label>
+<label>Krokighet / snöravvikelse <input id="sweep" type="number" value="0" step="1"><span>mm</span></label>
+<label>Barktjocklek <input id="bark" type="number" value="0" step="1"><span>mm</span></label>
 </div></section>
 <section class="panel"><h2>Beräkning</h2><div class="metrics metrics-compact">
 <div class="metric"><span>Designdiameter</span><strong id="designDiameter">–</strong></div><div class="metric"><span>Användbar diameter</span><strong id="usableDiameter">–</strong></div><div class="metric"><span>Utbyte</span><strong id="yieldPct">–</strong></div><div class="metric"><span>Sågad area</span><strong id="sawnArea">–</strong></div><div class="metric"><span>Stockvolym</span><strong id="logVolume">–</strong></div>
