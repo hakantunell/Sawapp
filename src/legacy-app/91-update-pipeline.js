@@ -33,6 +33,10 @@
   }
 
   function calculateMetrics(block, geom, sideYield, packingLayout) {
+    if (typeof global.calculateMetrics === "function") {
+      return global.calculateMetrics(block, geom, sideYield, packingLayout);
+    }
+
     const sideArea = packingLayout
       ? packingLayout.reduce((sum, r) => sum + (r.w * r.h / 1e6), 0)
       : (sideYield ? sideYield.reduce((sum, s) => sum + (s.width * s.thickness / 1e6), 0) : 0);
@@ -43,7 +47,37 @@
     return { sideArea, sawnArea, logArea, yieldPct };
   }
 
-  function buildPlanContext() {
+  function contextFromViewModel(model) {
+    if (!model) return null;
+
+    const activePlan = model.activePlan || model.sawmillCutPlan || model.sawList || [];
+    const activePlanLength = Array.isArray(activePlan) ? activePlan.length : 0;
+    const stepIndex = clampStepIndex(model.stepIndex, activePlanLength);
+
+    if (stepIndex !== getCurrentStepIndex()) {
+      setCurrentStepIndex(stepIndex);
+    }
+
+    return {
+      mode: model.mode,
+      values: model.values || model.v,
+      v: model.v || model.values,
+      geom: model.geom,
+      block: model.block,
+      sawList: model.sawList || [],
+      sideYield: model.sideYield || [],
+      packingLayout: model.packingLayout || null,
+      sawmillCutPlan: model.sawmillCutPlan || null,
+      activePlan,
+      activePlanLength,
+      stepIndex,
+      step: activePlanLength ? activePlan[stepIndex] : null,
+      metrics: model.metrics || calculateMetrics(model.block, model.geom, model.sideYield, model.packingLayout),
+      source: "view-model",
+    };
+  }
+
+  function buildContextFromLegacyPipeline() {
     const v = global.values();
     const geom = global.computeGeometry(v);
     const block = global.findBestCenterBlock(geom, v);
@@ -64,6 +98,8 @@
     }
 
     return {
+      mode: selectedOptimizationMode(),
+      values: v,
       v,
       geom,
       block,
@@ -76,7 +112,17 @@
       stepIndex,
       step: activePlanLength ? activePlan[stepIndex] : null,
       metrics: calculateMetrics(block, geom, sideYield, packingLayout),
+      source: "legacy-pipeline",
     };
+  }
+
+  function buildPlanContext() {
+    if (typeof global.buildSawViewModel === "function") {
+      const context = contextFromViewModel(global.buildSawViewModel());
+      if (context) return context;
+    }
+
+    return buildContextFromLegacyPipeline();
   }
 
   function moveCurrentStep(delta, context) {
@@ -90,6 +136,8 @@
 
   global.SawUpdatePipeline = {
     buildPlanContext,
+    buildContextFromLegacyPipeline,
+    contextFromViewModel,
     moveCurrentStep,
     resetCurrentStepIndex,
   };
