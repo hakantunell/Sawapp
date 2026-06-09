@@ -1,5 +1,5 @@
 // src/voice-input.js
-// Första version av röstinmatning för stockmått och sågflöde.
+// Röstinmatning för stockmått och sågflöde.
 
 (function initSawVoiceInput(global) {
   const FIELD_ALIASES = [
@@ -11,6 +11,16 @@
     { field: "sweep", label: "Krokighet", patterns: [/krokighet/i, /krok/i, /snoravvikelse/i, /avvikelse/i] },
     { field: "bark", label: "Bark", patterns: [/bark/i, /barktjocklek/i] },
   ];
+
+  const VOICE_DEFAULT_CM_FIELDS = new Set([
+    "rootDiameter",
+    "topDiameter",
+    "rootEndDiameter",
+    "topEndDiameter",
+    "logLength",
+    "sweep",
+    "bark",
+  ]);
 
   const NUMBER_WORDS = new Map([
     ["noll", 0], ["en", 1], ["ett", 1], ["tva", 2], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
@@ -25,6 +35,7 @@
   let listening = false;
   let lastField = null;
   let workflowMode = "measure";
+  let audioContext = null;
 
   function recognitionCtor() {
     return global.SpeechRecognition || global.webkitSpeechRecognition || null;
@@ -40,7 +51,7 @@
       .replace(/,/g, ".")
       .replace(/[åä]/g, "a")
       .replace(/ö/g, "o")
-      .replace(/millimeter|millimetrar|mm/g, " ")
+      .replace(/millimeter|millimetrar|mm/g, " millimeter ")
       .replace(/centimeter|centimetrar|cm/g, " centimeter ")
       .replace(/[.!?:;]+/g, " ")
       .replace(/\s+/g, " ")
@@ -57,7 +68,7 @@
   function extractNumber(text) {
     const digitMatches = [...text.matchAll(/-?\d+(?:[\.,]\d+)?/g)];
     if (digitMatches.length) {
-      // Använd sista talet så att "stöd1 320" inte tolkas som värdet 1.
+      // Använd sista talet så att "stöd1 32" inte tolkas som värdet 1.
       return Number(digitMatches[digitMatches.length - 1][0].replace(",", "."));
     }
 
@@ -78,6 +89,26 @@
     return null;
   }
 
+  function hasMillimeterUnit(text) {
+    return /\bmillimeter\b/.test(text);
+  }
+
+  function hasCentimeterUnit(text) {
+    return /\bcentimeter\b/.test(text);
+  }
+
+  function measurementToMillimeters(fieldId, value, text) {
+    if (hasMillimeterUnit(text)) {
+      return { valueMm: value, sourceUnit: "mm", sourceValue: value };
+    }
+
+    if (hasCentimeterUnit(text) || VOICE_DEFAULT_CM_FIELDS.has(fieldId)) {
+      return { valueMm: value * 10, sourceUnit: "cm", sourceValue: value };
+    }
+
+    return { valueMm: value, sourceUnit: "mm", sourceValue: value };
+  }
+
   function isDoneCommand(text) {
     return /^(klar|fardig|stock\s*klar|matning\s*klar)$/i.test(text.trim());
   }
@@ -96,6 +127,38 @@
 
   function getInput(id) {
     return global.document.getElementById(id);
+  }
+
+  function ensureAudioContext() {
+    const AudioContextCtor = global.AudioContext || global.webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    if (!audioContext) audioContext = new AudioContextCtor();
+    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
+      audioContext.resume().catch(() => {});
+    }
+    return audioContext;
+  }
+
+  function playConfirmSound() {
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } catch (error) {
+      // Ljudkvittens är hjälpfunktion; röstflödet ska inte stoppas om ljudet misslyckas.
+    }
   }
 
   function setFieldValue(fieldId, value) {
@@ -157,7 +220,17 @@
       return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
     }
 
-    return { ok: true, type: "field", text, field: field.field, label: field.label, value: number };
+    const measurement = measurementToMillimeters(field.field, number, text);
+    return {
+      ok: true,
+      type: "field",
+      text,
+      field: field.field,
+      label: field.label,
+      value: measurement.valueMm,
+      sourceValue: measurement.sourceValue,
+      sourceUnit: measurement.sourceUnit,
+    };
   }
 
   function setStatus(message, kind) {
@@ -175,6 +248,7 @@
     }
     if (typeof global.update === "function") global.update();
     activateTab("planTab");
+    playConfirmSound();
     setStatus(`Klar. Sågplanen är beräknad. ${describeStep(buildCurrentContext())} Säg “nästa snitt” för att gå vidare.`, "ok");
     return true;
   }
@@ -192,6 +266,7 @@
     }
     if (typeof global.update === "function") global.update();
     activateTab("planTab");
+    playConfirmSound();
     setStatus(describeStep(buildCurrentContext()), "ok");
     return true;
   }
@@ -204,7 +279,8 @@
     }
     if (typeof global.update === "function") global.update();
     activateTab("stockTab");
-    setStatus("Ny stock. Ange nya värden, t.ex. “stöd1 320” och “stöd2 300”. Säg “klar” när stocken är färdigmätt.", "listening");
+    playConfirmSound();
+    setStatus("Ny stock. Ange nya värden i centimeter, t.ex. “stöd1 32” och “stöd2 30”. Säg “klar” när stocken är färdigmätt.", "listening");
     return true;
   }
 
@@ -227,7 +303,8 @@
 
     workflowMode = "measure";
     lastField = parsed.field;
-    setStatus(`${parsed.label}: ${Math.round(parsed.value)} mm`, "ok");
+    playConfirmSound();
+    setStatus(`${parsed.label}: ${parsed.sourceValue} ${parsed.sourceUnit} (${Math.round(parsed.value)} mm)`, "ok");
     return true;
   }
 
@@ -244,7 +321,8 @@
     instance.onstart = () => {
       listening = true;
       updateButtonState();
-      setStatus("Lyssnar… säg mått, “klar”, “nästa snitt” eller “ny stock”.", "listening");
+      ensureAudioContext();
+      setStatus("Lyssnar… säg mått i centimeter, “klar”, “nästa snitt” eller “ny stock”.", "listening");
     };
 
     instance.onend = () => {
@@ -266,7 +344,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
         }
       }
     };
@@ -284,6 +362,7 @@
     if (!recognition || listening) return;
 
     try {
+      ensureAudioContext();
       recognition.start();
     } catch (error) {
       setStatus(`Kunde inte starta röstinmatning: ${error.message}`, "warn");
@@ -317,7 +396,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg mått som “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning. Säg uttryckligen “millimeter” om värdet ska tolkas som mm.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
