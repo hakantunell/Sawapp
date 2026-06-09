@@ -3,21 +3,21 @@
 
 (function initSawVoiceInput(global) {
   const FIELD_ALIASES = [
-    { field: "rootDiameter", label: "Diameter stöd 1", patterns: [/stöd\s*(ett|1)/i, /stödett/i, /diameter\s*stöd\s*(ett|1)/i] },
-    { field: "topDiameter", label: "Diameter stöd 2", patterns: [/stöd\s*(två|2)/i, /stödtvå/i, /diameter\s*stöd\s*(två|2)/i] },
-    { field: "rootEndDiameter", label: "Rotända", patterns: [/rot(ända)?/i, /rot\s*ände/i] },
-    { field: "topEndDiameter", label: "Toppända", patterns: [/topp(ända)?/i, /topp\s*ände/i] },
-    { field: "logLength", label: "Stocklängd", patterns: [/längd/i, /stocklängd/i, /stock\s*längd/i] },
-    { field: "sweep", label: "Krokighet", patterns: [/krokighet/i, /krok/i, /snöravvikelse/i, /avvikelse/i] },
+    { field: "rootDiameter", label: "Diameter stöd 1", patterns: [/stod\s*(ett|en|1)/i, /stodett/i, /stoden/i, /diameter\s*stod\s*(ett|en|1)/i] },
+    { field: "topDiameter", label: "Diameter stöd 2", patterns: [/stod\s*(tva|två|2)/i, /stodtva/i, /stodtvo/i, /diameter\s*stod\s*(tva|två|2)/i] },
+    { field: "rootEndDiameter", label: "Rotända", patterns: [/rot(anda)?/i, /rot\s*ande/i] },
+    { field: "topEndDiameter", label: "Toppända", patterns: [/topp(anda)?/i, /topp\s*ande/i] },
+    { field: "logLength", label: "Stocklängd", patterns: [/langd/i, /stocklangd/i, /stock\s*langd/i] },
+    { field: "sweep", label: "Krokighet", patterns: [/krokighet/i, /krok/i, /snoravvikelse/i, /avvikelse/i] },
     { field: "bark", label: "Bark", patterns: [/bark/i, /barktjocklek/i] },
   ];
 
   const NUMBER_WORDS = new Map([
-    ["noll", 0], ["en", 1], ["ett", 1], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
-    ["sex", 6], ["sju", 7], ["åtta", 8], ["nio", 9], ["tio", 10], ["elva", 11], ["tolv", 12],
+    ["noll", 0], ["en", 1], ["ett", 1], ["tva", 2], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
+    ["sex", 6], ["sju", 7], ["atta", 8], ["åtta", 8], ["nio", 9], ["tio", 10], ["elva", 11], ["tolv", 12],
     ["tretton", 13], ["fjorton", 14], ["femton", 15], ["sexton", 16], ["sjutton", 17],
     ["arton", 18], ["nitton", 19], ["tjugo", 20], ["trettio", 30], ["fyrtio", 40],
-    ["femtio", 50], ["sextio", 60], ["sjuttio", 70], ["åttio", 80], ["nittio", 90],
+    ["femtio", 50], ["sextio", 60], ["sjuttio", 70], ["attio", 80], ["åttio", 80], ["nittio", 90],
     ["hundra", 100], ["tusen", 1000],
   ]);
 
@@ -38,14 +38,17 @@
     return String(text || "")
       .toLowerCase()
       .replace(/,/g, ".")
+      .replace(/[åä]/g, "a")
+      .replace(/ö/g, "o")
       .replace(/millimeter|millimetrar|mm/g, " ")
       .replace(/centimeter|centimetrar|cm/g, " centimeter ")
+      .replace(/[.!?:;]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
 
   function parseNumberToken(token) {
-    const normalized = String(token || "").toLowerCase().replace(",", ".");
+    const normalized = normalizeText(token).replace(",", ".");
     if (/^-?\d+(\.\d+)?$/.test(normalized)) return Number(normalized);
     if (NUMBER_WORDS.has(normalized)) return NUMBER_WORDS.get(normalized);
     return null;
@@ -76,19 +79,19 @@
   }
 
   function isDoneCommand(text) {
-    return /^(klar|färdig|stock\s*klar|mätning\s*klar)$/i.test(text.trim());
+    return /^(klar|fardig|stock\s*klar|matning\s*klar)$/i.test(text.trim());
   }
 
   function isNextCutCommand(text) {
-    return /^(nästa\s*(snitt|steg)|framåt|nästa)$/i.test(text.trim());
+    return /^(nasta\s*(snitt|steg)|framat|nasta)$/i.test(text.trim());
   }
 
   function isPreviousCutCommand(text) {
-    return /^(föregående\s*(snitt|steg)|förra\s*(snitt|steg)|bakåt|tillbaka)$/i.test(text.trim());
+    return /^(foregaende\s*(snitt|steg)|forra\s*(snitt|steg)|bakat|tillbaka)$/i.test(text.trim());
   }
 
   function isNewLogCommand(text) {
-    return /^(ny\s*stock|nästa\s*stock|ny\s*mätning)$/i.test(text.trim());
+    return /^(ny\s*stock|nasta\s*stock|ny\s*matning)$/i.test(text.trim());
   }
 
   function getInput(id) {
@@ -100,8 +103,8 @@
     if (!input) return false;
 
     input.value = String(Math.round(value));
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.dispatchEvent(new global.Event("input", { bubbles: true }));
+    input.dispatchEvent(new global.Event("change", { bubbles: true }));
     return true;
   }
 
@@ -125,7 +128,7 @@
   }
 
   function describeStep(context) {
-    if (!context || !context.step) return "Ingen aktivt snitt hittades.";
+    if (!context || !context.step) return "Inget aktivt snitt hittades.";
     const step = context.step;
     const index = (context.stepIndex || 0) + 1;
     const total = context.activePlanLength || "?";
@@ -146,7 +149,7 @@
     let field = findField(text);
     const number = extractNumber(text);
 
-    if (!field && lastField && number !== null && /^(\d|noll|en|ett|två|tre|fyra|fem|sex|sju|åtta|nio|tio)/.test(text)) {
+    if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) {
       field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
     }
 
@@ -208,7 +211,7 @@
   function applyVoiceCommand(rawText) {
     const parsed = parseVoiceCommand(rawText);
     if (!parsed || !parsed.ok) {
-      setStatus(`Jag hörde: “${rawText}”. ${parsed ? parsed.reason : "Kunde inte tolka kommandot."}`, "warn");
+      setStatus(`Jag hörde: “${rawText}”. Tolkade som: “${parsed ? parsed.text : ""}”. ${parsed ? parsed.reason : "Kunde inte tolka kommandot."}`, "warn");
       return false;
     }
 
