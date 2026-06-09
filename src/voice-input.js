@@ -74,6 +74,10 @@
     return null;
   }
 
+  function isDoneCommand(text) {
+    return /^(klar|färdig|stock\s*klar|mätning\s*klar)$/i.test(text.trim());
+  }
+
   function getInput(id) {
     return global.document.getElementById(id);
   }
@@ -92,6 +96,10 @@
     const text = normalizeText(rawText);
     if (!text) return null;
 
+    if (isDoneCommand(text)) {
+      return { ok: true, type: "done", text };
+    }
+
     let field = findField(text);
     const number = extractNumber(text);
 
@@ -103,7 +111,7 @@
       return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
     }
 
-    return { ok: true, text, field: field.field, label: field.label, value: number };
+    return { ok: true, type: "field", text, field: field.field, label: field.label, value: number };
   }
 
   function setStatus(message, kind) {
@@ -113,11 +121,24 @@
     el.className = `voiceStatus ${kind || ""}`.trim();
   }
 
+  function handleDoneCommand() {
+    lastField = null;
+    if (typeof global.update === "function") {
+      global.update();
+    }
+    setStatus("Klar. Stocken är färdigmätt och sågplanen är uppdaterad.", "ok");
+    return true;
+  }
+
   function applyVoiceCommand(rawText) {
     const parsed = parseVoiceCommand(rawText);
     if (!parsed || !parsed.ok) {
       setStatus(`Jag hörde: “${rawText}”. ${parsed ? parsed.reason : "Kunde inte tolka kommandot."}`, "warn");
       return false;
+    }
+
+    if (parsed.type === "done") {
+      return handleDoneCommand();
     }
 
     if (!setFieldValue(parsed.field, parsed.value)) {
@@ -143,7 +164,7 @@
     instance.onstart = () => {
       listening = true;
       updateButtonState();
-      setStatus("Lyssnar… säg t.ex. “stöd1 320”, “stöd2 300” eller “längd 4500”.", "listening");
+      setStatus("Lyssnar… säg t.ex. “stöd1 320”, “stöd2 300” eller “klar”.", "listening");
     };
 
     instance.onend = () => {
@@ -165,7 +186,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300” eller “klar”.`, "warn");
         }
       }
     };
@@ -216,7 +237,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg t.ex. “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”, “längd 4500”, “krokighet 10”. Rot och topp är frivilliga extra mätvärden.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg t.ex. “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”, “längd 4500”, “krokighet 10”. Säg “klar” när stocken är färdigmätt.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
