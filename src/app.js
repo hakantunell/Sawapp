@@ -31,6 +31,7 @@
     "src/timber-canvas-parts.js",
     "src/legacy-app/60-timber-canvas.js",
     "src/legacy-app/70-canvas-helpers.js",
+    "src/packing-canvas-parts.js",
     "src/legacy-app/80-packing-canvas.js",
     "src/format-adapter.js",
     "src/dimension-label-adapter.js",
