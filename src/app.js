@@ -70,7 +70,8 @@
     "src/dimensions-editor.js",
     "src/dimensions-editor-adapter.js",
     "src/dimensions-editor-activation-adapter.js",
-    "src/big-step-navigation-fix.js"
+    "src/big-step-navigation-fix.js",
+    "src/voice-input.js"
   ];
 
   function loadScript(src) {
