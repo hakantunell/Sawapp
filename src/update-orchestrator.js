@@ -1,94 +1,64 @@
 // src/update-orchestrator.js
-// Passiv update-orkestrator för den modulära renderkedjan.
+// Update-orkestrator för den modulära renderkedjan.
 //
-// Den här modulen ersätter inte legacy update() automatiskt.
-// Syftet är att kunna köra hela den nya ViewModel-baserade renderkedjan utan att
-// först anropa legacy update(). När den är verifierad kan den senare användas av
-// en adapter/feature-flag för att minska beroendet av app.js.
+// Orkestratorn äger inte längre en egen rendersekvens. Den återanvänder samma
+// UpdateContext och SawUpdateRendering som legacy update()-flödet använder.
 
 (function initSawUpdateOrchestrator(global) {
   function hasFunction(name) {
     return typeof global[name] === "function";
   }
 
-  function updateFromViewModel() {
-    if (!hasFunction("buildSawViewModel")) {
-      console.warn("buildSawViewModel saknas. SawUpdateOrchestrator kan inte köra.");
-      return null;
+  function buildContext() {
+    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
+      return global.SawUpdatePipeline.buildPlanContext();
     }
 
-    const model = global.buildSawViewModel();
-    if (!model) return null;
+    if (hasFunction("buildSawViewModel") && global.SawUpdatePipeline && typeof global.SawUpdatePipeline.contextFromViewModel === "function") {
+      return global.SawUpdatePipeline.contextFromViewModel(global.buildSawViewModel());
+    }
 
-    // Dimensionslistan ska alltid ritas från SawState i ViewModel-läge.
-    // Annars kan legacy dimensions-listan fortsätta leva parallellt och ge
-    // intrycket att prioritet/flytt har fastnat eller hoppar tillbaka.
+    return null;
+  }
+
+  function renderContext(context) {
+    if (!context) return null;
+
     if (hasFunction("renderDimensionsEditorFromState")) {
       global.renderDimensionsEditorFromState();
+    } else if (hasFunction("renderDimensions")) {
+      global.renderDimensions();
     }
 
     if (hasFunction("renderInputVisibility")) {
       global.renderInputVisibility();
     }
 
-    if (model.mode === "sawmill") {
-      if (hasFunction("renderPackingCanvas") && model.packingLayout) {
-        global.renderPackingCanvas(
-          model.block,
-          model.geom,
-          model.v,
-          model.packingLayout,
-          model.sawmillCutPlan,
-          model.stepIndex
-        );
+    if (global.SawUpdateRendering) {
+      if (typeof global.SawUpdateRendering.renderSummary === "function") {
+        global.SawUpdateRendering.renderSummary(context);
       }
-
-      if (hasFunction("renderSawmillCutPlan") && model.sawmillCutPlan) {
-        global.renderSawmillCutPlan(model.sawmillCutPlan, model.stepIndex);
+      if (typeof global.SawUpdateRendering.renderOrderStatus === "function") {
+        global.SawUpdateRendering.renderOrderStatus(context);
       }
-
-      if (hasFunction("renderPackingResult")) {
-        global.renderPackingResult(model.packingLayout);
+      if (typeof global.SawUpdateRendering.renderAll === "function") {
+        global.SawUpdateRendering.renderAll(context);
       }
-    } else {
-      if (hasFunction("renderSideYield")) {
-        global.renderSideYield(model.sideYield);
-      }
-
-      if (hasFunction("renderTimberSawList") && model.sawList) {
-        global.renderTimberSawList(model.sawList);
-      }
-
-      if (hasFunction("renderTimberCanvasFromModel") && model.sawList) {
-        global.renderTimberCanvasFromModel(model);
-      }
+      return context;
     }
 
-    if (hasFunction("renderMetrics")) {
-      global.renderMetrics(model.geom, model.metrics);
-    }
+    console.warn("SawUpdateRendering saknas. Kan inte köra modulär update-rendering.");
+    return context;
+  }
 
-    if (hasFunction("renderCalcDetails")) {
-      global.renderCalcDetails(model.geom, model.block, model.v);
-    }
-
-    if (hasFunction("renderBigScreenStep") && model.step) {
-      global.renderBigScreenStep(model.step);
-    }
-
-    if (hasFunction("renderSawOrderStatus")) {
-      global.renderSawOrderStatus(model);
-    }
-
-    if (hasFunction("renderSupportSideViewFromModel")) {
-      global.renderSupportSideViewFromModel(model);
-    }
-
-    return model;
+  function updateFromViewModel() {
+    return renderContext(buildContext());
   }
 
   global.SawUpdateOrchestrator = {
     updateFromViewModel,
+    buildContext,
+    renderContext,
   };
 
   global.updateFromViewModel = updateFromViewModel;
