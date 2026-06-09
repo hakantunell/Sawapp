@@ -1,4 +1,20 @@
 function renderPackingCanvas(block, geom, v, packingLayout, sawmillCutPlan) {
+  if (window.SawPackingCanvasParts) {
+    const layout = window.SawPackingCanvasParts.buildPackingCanvasLayout(geom, v, packingLayout, sawmillCutPlan);
+    if (!layout) return;
+
+    const ctx = layout.ctx;
+    ctx.save();
+    ctx.translate(layout.cx, layout.cy);
+
+    window.SawPackingCanvasParts.drawPackingBody(layout, geom, v, packingLayout, sawmillCutPlan);
+    window.SawPackingCanvasParts.drawPackingBed(layout);
+    window.SawPackingCanvasParts.drawPackingBlade(layout);
+
+    ctx.restore();
+    return;
+  }
+
   const canvas = $("sawCanvas");
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
