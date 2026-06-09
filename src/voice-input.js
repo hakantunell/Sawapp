@@ -1,5 +1,5 @@
 // src/voice-input.js
-// Första version av röstinmatning för stockmått.
+// Första version av röstinmatning för stockmått och sågflöde.
 
 (function initSawVoiceInput(global) {
   const FIELD_ALIASES = [
@@ -24,6 +24,7 @@
   let recognition = null;
   let listening = false;
   let lastField = null;
+  let workflowMode = "measure";
 
   function recognitionCtor() {
     return global.SpeechRecognition || global.webkitSpeechRecognition || null;
@@ -78,6 +79,18 @@
     return /^(klar|färdig|stock\s*klar|mätning\s*klar)$/i.test(text.trim());
   }
 
+  function isNextCutCommand(text) {
+    return /^(nästa\s*(snitt|steg)|framåt|nästa)$/i.test(text.trim());
+  }
+
+  function isPreviousCutCommand(text) {
+    return /^(föregående\s*(snitt|steg)|förra\s*(snitt|steg)|bakåt|tillbaka)$/i.test(text.trim());
+  }
+
+  function isNewLogCommand(text) {
+    return /^(ny\s*stock|nästa\s*stock|ny\s*mätning)$/i.test(text.trim());
+  }
+
   function getInput(id) {
     return global.document.getElementById(id);
   }
@@ -92,13 +105,43 @@
     return true;
   }
 
+  function buildCurrentContext() {
+    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
+      return global.SawUpdatePipeline.buildPlanContext();
+    }
+    return null;
+  }
+
+  function activateTab(tabId) {
+    const tabButton = global.document.querySelector(`.tab[data-tab="${tabId}"]`);
+    if (tabButton) {
+      tabButton.click();
+      return true;
+    }
+
+    global.document.querySelectorAll(".tabPage").forEach((page) => page.classList.toggle("active", page.id === tabId));
+    global.document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabId));
+    return false;
+  }
+
+  function describeStep(context) {
+    if (!context || !context.step) return "Ingen aktivt snitt hittades.";
+    const step = context.step;
+    const index = (context.stepIndex || 0) + 1;
+    const total = context.activePlanLength || "?";
+    const support1 = Number.isFinite(step.rootSupportHeight) ? `${step.rootSupportHeight.toFixed(0)} mm` : "–";
+    const support2 = Number.isFinite(step.topSupportHeight) ? `${step.topSupportHeight.toFixed(0)} mm` : "–";
+    return `Snitt ${index} av ${total}: rotation ${step.rotation || "–"}. Stöd 1 ${support1}, stöd 2 ${support2}.`;
+  }
+
   function parseVoiceCommand(rawText) {
     const text = normalizeText(rawText);
     if (!text) return null;
 
-    if (isDoneCommand(text)) {
-      return { ok: true, type: "done", text };
-    }
+    if (isDoneCommand(text)) return { ok: true, type: "done", text };
+    if (isNextCutCommand(text)) return { ok: true, type: "next-cut", text };
+    if (isPreviousCutCommand(text)) return { ok: true, type: "previous-cut", text };
+    if (isNewLogCommand(text)) return { ok: true, type: "new-log", text };
 
     let field = findField(text);
     const number = extractNumber(text);
@@ -123,10 +166,42 @@
 
   function handleDoneCommand() {
     lastField = null;
-    if (typeof global.update === "function") {
-      global.update();
+    workflowMode = "cut";
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
+      global.SawState.resetCurrentStepIndex();
     }
-    setStatus("Klar. Stocken är färdigmätt och sågplanen är uppdaterad.", "ok");
+    if (typeof global.update === "function") global.update();
+    activateTab("planTab");
+    setStatus(`Klar. Sågplanen är beräknad. ${describeStep(buildCurrentContext())} Säg “nästa snitt” för att gå vidare.`, "ok");
+    return true;
+  }
+
+  function handleMoveCut(delta) {
+    const before = buildCurrentContext();
+    if (!before || !before.activePlanLength) {
+      setStatus("Ingen sågplan finns ännu. Mät stocken och säg “klar” först.", "warn");
+      return false;
+    }
+
+    workflowMode = "cut";
+    if (global.SawState && typeof global.SawState.moveCurrentStep === "function") {
+      global.SawState.moveCurrentStep(delta, before.activePlanLength);
+    }
+    if (typeof global.update === "function") global.update();
+    activateTab("planTab");
+    setStatus(describeStep(buildCurrentContext()), "ok");
+    return true;
+  }
+
+  function handleNewLogCommand() {
+    workflowMode = "measure";
+    lastField = null;
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
+      global.SawState.resetCurrentStepIndex();
+    }
+    if (typeof global.update === "function") global.update();
+    activateTab("stockTab");
+    setStatus("Ny stock. Ange nya värden, t.ex. “stöd1 320” och “stöd2 300”. Säg “klar” när stocken är färdigmätt.", "listening");
     return true;
   }
 
@@ -137,15 +212,17 @@
       return false;
     }
 
-    if (parsed.type === "done") {
-      return handleDoneCommand();
-    }
+    if (parsed.type === "done") return handleDoneCommand();
+    if (parsed.type === "next-cut") return handleMoveCut(1);
+    if (parsed.type === "previous-cut") return handleMoveCut(-1);
+    if (parsed.type === "new-log") return handleNewLogCommand();
 
     if (!setFieldValue(parsed.field, parsed.value)) {
       setStatus(`Kunde inte sätta ${parsed.label}.`, "warn");
       return false;
     }
 
+    workflowMode = "measure";
     lastField = parsed.field;
     setStatus(`${parsed.label}: ${Math.round(parsed.value)} mm`, "ok");
     return true;
@@ -164,7 +241,7 @@
     instance.onstart = () => {
       listening = true;
       updateButtonState();
-      setStatus("Lyssnar… säg t.ex. “stöd1 320”, “stöd2 300” eller “klar”.", "listening");
+      setStatus("Lyssnar… säg mått, “klar”, “nästa snitt” eller “ny stock”.", "listening");
     };
 
     instance.onend = () => {
@@ -186,7 +263,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300” eller “klar”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 300”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
         }
       }
     };
@@ -237,7 +314,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg t.ex. “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”, “längd 4500”, “krokighet 10”. Säg “klar” när stocken är färdigmätt.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg mått som “stöd1 320”, “stöd2 300”, “rot 340”, “topp 290”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
