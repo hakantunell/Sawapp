@@ -28,6 +28,7 @@
     "src/legacy-app/30-sawmill-packing.js",
     "src/legacy-app/40-packing-plan.js",
     "src/legacy-app/50-renderers.js",
+    "src/timber-canvas-parts.js",
     "src/legacy-app/60-timber-canvas.js",
     "src/legacy-app/70-canvas-helpers.js",
     "src/legacy-app/80-packing-canvas.js",
