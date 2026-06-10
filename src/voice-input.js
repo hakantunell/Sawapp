@@ -22,6 +22,8 @@
     "bark",
   ]);
 
+  const MEASURED_LOG_FIELDS = ["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter", "logLength", "sweep"];
+
   const NUMBER_WORDS = new Map([
     ["noll", 0], ["en", 1], ["ett", 1], ["tva", 2], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
     ["sex", 6], ["sju", 7], ["atta", 8], ["åtta", 8], ["nio", 9], ["tio", 10], ["elva", 11], ["tolv", 12],
@@ -255,11 +257,26 @@
     return true;
   }
 
+  function resetMeasuredLogFields() {
+    for (const fieldId of MEASURED_LOG_FIELDS) {
+      const input = getInput(fieldId);
+      if (input) input.value = "0";
+    }
+  }
+
   function buildCurrentContext() {
     if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
       return global.SawUpdatePipeline.buildPlanContext();
     }
     return null;
+  }
+
+  function activateWorkScreen() {
+    if (global.SawWorkScreen && typeof global.SawWorkScreen.activateWorkScreen === "function") {
+      global.SawWorkScreen.activateWorkScreen();
+      return true;
+    }
+    return activateTab("bigTab");
   }
 
   function activateTab(tabId) {
@@ -331,7 +348,7 @@
       global.SawState.resetCurrentStepIndex();
     }
     if (typeof global.update === "function") global.update();
-    activateTab("planTab");
+    activateWorkScreen();
     playConfirmSound();
     setStatus(`Klar. Sågplanen är beräknad. ${describeStep(buildCurrentContext())} Säg “nästa snitt” för att gå vidare.`, "ok");
     return true;
@@ -340,16 +357,27 @@
   function handleMoveCut(delta) {
     const before = buildCurrentContext();
     if (!before || !before.activePlanLength) {
-      setStatus("Ingen sågplan finns ännu. Mät stocken och säg “klar” först.", "warn");
+      setStatus("Ingen sågplan finns ännu. Mät stöd 1, stöd 2 och längd först.", "warn");
       return false;
     }
 
+    const currentIndex = Number(before.stepIndex || 0);
+    const lastIndex = Number(before.activePlanLength || 1) - 1;
+    const nextIndex = Math.max(0, Math.min(lastIndex, currentIndex + Number(delta || 0)));
+
     workflowMode = "cut";
-    if (global.SawState && typeof global.SawState.moveCurrentStep === "function") {
-      global.SawState.moveCurrentStep(delta, before.activePlanLength);
+    if (nextIndex === currentIndex) {
+      activateWorkScreen();
+      playConfirmSound();
+      setStatus(delta > 0 ? "Sista snittet. Säg “ny stock” när du börjar med nästa stock." : "Första snittet.", "ok");
+      return true;
+    }
+
+    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
+      global.SawState.setCurrentStepIndex(nextIndex);
     }
     if (typeof global.update === "function") global.update();
-    activateTab("planTab");
+    activateWorkScreen();
     playConfirmSound();
     setStatus(describeStep(buildCurrentContext()), "ok");
     return true;
@@ -358,13 +386,14 @@
   function handleNewLogCommand() {
     workflowMode = "measure";
     lastField = null;
+    resetMeasuredLogFields();
     if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
       global.SawState.resetCurrentStepIndex();
     }
     if (typeof global.update === "function") global.update();
-    activateTab("stockTab");
+    activateWorkScreen();
     playConfirmSound();
-    setStatus("Ny stock. Ange nya värden i centimeter, t.ex. “stöd1 32” och “stöd2 30”. Säg “klar” när stocken är färdigmätt.", "listening");
+    setStatus("Ny stock. Stanna på arbetsskärmen och ange nya värden, t.ex. “stöd1 32”, “stöd2 30” och “längd fyra sextio”.", "listening");
     return true;
   }
 
@@ -387,6 +416,9 @@
 
     workflowMode = "measure";
     lastField = parsed.field;
+    if (global.SawWorkScreen && typeof global.SawWorkScreen.hasMinimumLogInput === "function" && global.SawWorkScreen.hasMinimumLogInput()) {
+      activateWorkScreen();
+    }
     playConfirmSound();
     setStatus(`${parsed.label}: ${parsed.sourceValue} ${parsed.sourceUnit} (${Math.round(parsed.value)} mm)`, "ok");
     return true;
@@ -406,7 +438,7 @@
       listening = true;
       updateButtonState();
       ensureAudioContext();
-      setStatus("Lyssnar… säg mått i centimeter, “klar”, “nästa snitt” eller “ny stock”.", "listening");
+      setStatus("Lyssnar… säg mått i centimeter, “nästa snitt” eller “ny stock”.", "listening");
     };
 
     instance.onend = () => {
@@ -428,7 +460,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “längd fyra sextio”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “längd fyra sextio”, “nästa snitt” eller “ny stock”.`, "warn");
         }
       }
     };
@@ -480,7 +512,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning. Säg uttryckligen “millimeter” om värdet ska tolkas som mm.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Arbetsskärmen används hela tiden. Säg “nästa snitt” i sågplanen och “ny stock” för nästa mätning.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
