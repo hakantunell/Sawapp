@@ -48,7 +48,38 @@
 
         <h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
 </div></section>
-<section id="bigTab" class="tabPage"><section class="bigDisplay"><div id="bigStep">Steg 1</div><div id="bigHeight">–</div><div id="bigRotation">–</div><div id="bigReference">–</div><div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div></section><button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div></section>
+<section id="bigTab" class="tabPage">
+  <section class="bigWorkScreen">
+    <div class="bigWorkHeader">
+      <div><div id="bigStep" class="bigStepLabel">Steg 1</div><div id="bigRotation" class="bigRotationLabel">–</div></div>
+      <div id="bigLogLength" class="bigLogLength">Längd: –</div>
+    </div>
+    <div class="bigWorkGrid">
+      <section class="bigWorkCanvasPanel">
+        <h2>Sågbild</h2>
+        <canvas id="bigSawCanvas" width="780" height="620"></canvas>
+      </section>
+      <section class="bigWorkSidePanel">
+        <h2>Sågvy</h2>
+        <div id="bigSupportSideView" class="supportSideView bigSupportSideView">
+          <div class="sawHead">Sågaggregat</div>
+          <div class="supportDiagram">
+            <div class="bladeLine"></div>
+            <div class="logSide"></div>
+            <div class="support support1"></div>
+            <div class="support support2"></div>
+            <div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
+            <div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
+          </div>
+        </div>
+        <div id="bigHeight" class="bigHeightReadout">–</div>
+        <div id="bigReference" class="bigReferenceReadout">–</div>
+        <div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div>
+      </section>
+    </div>
+  </section>
+  <button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div>
+</section>
 <section id="settingsTab" class="tabPage"><section class="panel settingsPanel"><h2>Inställningar för såg</h2><p class="hint">Värden som normalt inte ändras för varje stock.</p><div class="grid2">
 <label>Sågmodell <select id="sawModel"><option value="logosol-m7">Logosol M7 / liknande</option><option value="custom">Egen såg</option></select><span>framtida standardvärden</span></label>
 <label>Stödavstånd <input id="supportDistance" type="number" value="2500" step="10"><span>mm</span></label>
