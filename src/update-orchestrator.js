@@ -44,6 +44,11 @@
       if (typeof global.SawUpdateRendering.renderAll === "function") {
         global.SawUpdateRendering.renderAll(context);
       }
+
+      if (global.SawWorkScreen && typeof global.SawWorkScreen.renderWorkScreen === "function") {
+        global.SawWorkScreen.renderWorkScreen(context);
+      }
+
       return context;
     }
 
