@@ -31,6 +31,13 @@
     ["hundra", 100], ["tusen", 1000],
   ]);
 
+  const MAGNITUDE_WORDS = new Set(["hundra", "tusen"]);
+  const COMMAND_WORDS = new Set([
+    "stod", "stodett", "stoden", "stodtva", "stodtvo", "diameter", "rot", "rotanda", "rotande",
+    "topp", "toppanda", "toppande", "langd", "stocklangd", "stock", "krokighet", "krok",
+    "snoravvikelse", "avvikelse", "bark", "barktjocklek", "centimeter", "millimeter",
+  ]);
+
   let recognition = null;
   let listening = false;
   let lastField = null;
@@ -65,11 +72,88 @@
     return null;
   }
 
-  function extractNumber(text) {
-    const digitMatches = [...text.matchAll(/-?\d+(?:[\.,]\d+)?/g)];
+  function tokensAfterField(text, fieldId) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const fieldIndex = words.findIndex((word, index) => {
+      if (fieldId === "logLength") return /^(langd|stocklangd)$/.test(word) || (word === "stock" && words[index + 1] === "langd");
+      if (fieldId === "rootDiameter") return /^stod(ett|en|1)?$/.test(word) || (word === "stod" && /^(ett|en|1)$/.test(words[index + 1] || ""));
+      if (fieldId === "topDiameter") return /^stod(tva|2|tvo)?$/.test(word) || (word === "stod" && /^(tva|2|tvo)$/.test(words[index + 1] || ""));
+      if (fieldId === "rootEndDiameter") return /^rot/.test(word);
+      if (fieldId === "topEndDiameter") return /^topp/.test(word);
+      if (fieldId === "sweep") return /^(krokighet|krok|snoravvikelse|avvikelse)$/.test(word);
+      if (fieldId === "bark") return /^(bark|barktjocklek)$/.test(word);
+      return false;
+    });
+
+    const rawTokens = fieldIndex >= 0 ? words.slice(fieldIndex + 1) : words;
+    return rawTokens.filter((word) => !COMMAND_WORDS.has(word));
+  }
+
+  function parseSpokenNumberTokens(tokens) {
+    const values = tokens
+      .map(parseNumberToken)
+      .filter((value) => value !== null && !Number.isNaN(value));
+
+    if (!values.length) return null;
+
+    if (values.length >= 2) {
+      const first = values[0];
+      const second = values[1];
+
+      // Vanlig sågverkslängd: "fyra sextio" / "4 60" betyder 460 cm.
+      if (first >= 1 && first <= 9 && second >= 0 && second < 100) {
+        return first * 100 + second;
+      }
+    }
+
+    if (values.length === 1) return values[0];
+
+    return values[values.length - 1];
+  }
+
+  function parseSwedishNumberWords(tokens) {
+    let total = 0;
+    let current = 0;
+    let found = false;
+
+    for (const token of tokens) {
+      const value = parseNumberToken(token);
+      if (value === null) continue;
+      found = true;
+
+      if (token === "hundra") {
+        current = (current || 1) * 100;
+      } else if (token === "tusen") {
+        total += (current || 1) * 1000;
+        current = 0;
+      } else {
+        current += value;
+      }
+    }
+
+    return found ? total + current : null;
+  }
+
+  function extractNumber(text, fieldId) {
+    const digitMatches = [...text.matchAll(/-?\d+(?:[\.,]\d+)?/g)].map((match) => Number(match[0].replace(",", ".")));
+
+    if (fieldId === "logLength") {
+      const relevantTokens = tokensAfterField(text, fieldId);
+      const spoken = parseSpokenNumberTokens(relevantTokens);
+      const wordNumber = parseSwedishNumberWords(relevantTokens);
+
+      if (relevantTokens.some((token) => MAGNITUDE_WORDS.has(token)) && wordNumber !== null) return wordNumber;
+      if (digitMatches.length >= 2 && digitMatches[0] >= 1 && digitMatches[0] <= 9 && digitMatches[1] >= 0 && digitMatches[1] < 100) {
+        return digitMatches[0] * 100 + digitMatches[1];
+      }
+      if (spoken !== null) return spoken;
+      if (digitMatches.length) return digitMatches[digitMatches.length - 1];
+      return null;
+    }
+
     if (digitMatches.length) {
       // Använd sista talet så att "stöd1 32" inte tolkas som värdet 1.
-      return Number(digitMatches[digitMatches.length - 1][0].replace(",", "."));
+      return digitMatches[digitMatches.length - 1];
     }
 
     const words = text.split(/\s+/);
@@ -210,7 +294,7 @@
     if (isNewLogCommand(text)) return { ok: true, type: "new-log", text };
 
     let field = findField(text);
-    const number = extractNumber(text);
+    const number = field ? extractNumber(text, field.field) : extractNumber(text, lastField);
 
     if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) {
       field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
@@ -344,7 +428,7 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
         if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
+          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “längd fyra sextio”, “klar”, “nästa snitt” eller “ny stock”.`, "warn");
         }
       }
     };
@@ -396,7 +480,7 @@
       <div class="toolbar voiceToolbar">
         <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
       </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning. Säg uttryckligen “millimeter” om värdet ska tolkas som mm.</div>
+      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “klar” när stocken är färdigmätt, “nästa snitt” i sågplanen och “ny stock” för nästa mätning. Säg uttryckligen “millimeter” om värdet ska tolkas som mm.</div>
     `;
 
     const hint = stockPanel.querySelector(".hint");
