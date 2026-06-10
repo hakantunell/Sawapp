@@ -50,32 +50,38 @@
 </div></section>
 <section id="bigTab" class="tabPage">
   <section class="bigWorkScreen">
-    <div class="bigWorkHeader">
-      <div><div id="bigStep" class="bigStepLabel">Steg 1</div><div id="bigRotation" class="bigRotationLabel">–</div></div>
-      <div id="bigLogLength" class="bigLogLength">Längd: –</div>
-    </div>
     <div class="bigWorkGrid">
-      <section class="bigWorkCanvasPanel">
-        <h2>Sågbild</h2>
-        <canvas id="bigSawCanvas" width="780" height="620"></canvas>
-      </section>
-      <section class="bigWorkSidePanel">
-        <h2>Sågvy</h2>
-        <div id="bigSupportSideView" class="supportSideView bigSupportSideView">
-          <div class="sawHead">Sågaggregat</div>
-          <div class="supportDiagram">
-            <div class="bladeLine"></div>
-            <div class="logSide"></div>
-            <div class="support support1"></div>
-            <div class="support support2"></div>
-            <div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
-            <div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
+      <section class="bigWorkMain">
+        <section class="bigWorkCanvasPanel">
+          <h2>Sågbild</h2>
+          <canvas id="bigSawCanvas" width="780" height="620"></canvas>
+        </section>
+        <section class="bigWorkSidePanel">
+          <h2>Sågvy</h2>
+          <div id="bigSupportSideView" class="supportSideView bigSupportSideView">
+            <div class="sawHead">Sågaggregat</div>
+            <div class="supportDiagram">
+              <div class="bladeLine"></div>
+              <div class="logSide"></div>
+              <div class="support support1"></div>
+              <div class="support support2"></div>
+              <div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
+              <div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
+            </div>
           </div>
-        </div>
-        <div id="bigHeight" class="bigHeightReadout">–</div>
-        <div id="bigReference" class="bigReferenceReadout">–</div>
-        <div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div>
+        </section>
       </section>
+      <aside class="bigDataPanel">
+        <div id="bigStep" class="bigStepLabel">Ingen sågplan</div>
+        <div id="bigRotation" class="bigRotationLabel">Ange stöd 1, stöd 2 och längd.</div>
+        <div id="bigReference" class="bigReferenceReadout">–</div>
+        <div class="bigSupportCards">
+          <div class="bigSupportCard"><span>STÖD 1</span><strong id="bigSupport1Value">–</strong></div>
+          <div class="bigSupportCard"><span>STÖD 2</span><strong id="bigSupport2Value">–</strong></div>
+        </div>
+        <div id="bigMeasuredData" class="bigMeasuredData"></div>
+        <div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div>
+      </aside>
     </div>
   </section>
   <button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div>
