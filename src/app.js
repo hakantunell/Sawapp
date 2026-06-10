@@ -66,6 +66,7 @@
     "src/update-orchestrator.js",
     "src/legacy-app/91-update-pipeline.js",
     "src/legacy-app/92-update-rendering.js",
+    "src/work-screen.js",
     "src/legacy-app/90-update.js",
     "src/dimensions-editor.js",
     "src/dimensions-editor-adapter.js",
