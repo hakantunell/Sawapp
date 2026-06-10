@@ -4,23 +4,23 @@
 <body>
 <header class="topbar"><div><h1>Sawapp</h1><p>Timmer- och sågverksplanering.</p></div><div class="version">v1.1.0</div></header>
 <nav class="tabs">
-<button class="tab active" data-tab="stockTab">Stock</button><button class="tab" data-tab="dimensionsTab">Dimensioner</button><button class="tab" data-tab="planTab">Sågplan</button><button class="tab" data-tab="bigTab">Storskärm</button><button class="tab" data-tab="settingsTab">Inställningar</button>
+<button class="tab" data-tab="stockTab">Stock</button><button class="tab" data-tab="dimensionsTab">Dimensioner</button><button class="tab" data-tab="planTab">Sågplan</button><button class="tab active" data-tab="bigTab">Storskärm</button><button class="tab" data-tab="settingsTab">Inställningar</button>
 </nav>
 <main class="tabLayout">
-<section id="stockTab" class="tabPage active"><div class="twoCol">
+<section id="stockTab" class="tabPage"><div class="twoCol">
 <section class="panel"><h2>Stock</h2><p class="hint">Värden som mäts för varje stock.</p><div class="grid2">
-<label>Diameter stöd 1 <input id="rootDiameter" type="number" value="0" step="1"><span>mm</span></label>
-<label>Diameter stöd 2 <input id="topDiameter" type="number" value="0" step="1"><span>mm</span></label>
+<label>Diameter stöd 1 <input id="rootDiameter" type="number" value="" step="1"><span>mm</span></label>
+<label>Diameter stöd 2 <input id="topDiameter" type="number" value="" step="1"><span>mm</span></label>
           <label>Rotända, valfritt
-            <input id="rootEndDiameter" type="number" value="0" step="1" placeholder="valfritt">
+            <input id="rootEndDiameter" type="number" value="" step="1" placeholder="valfritt">
             <span>mm, används för mer noggrann avsmalning</span>
           </label>
           <label>Toppända, valfritt
-            <input id="topEndDiameter" type="number" value="0" step="1" placeholder="valfritt">
+            <input id="topEndDiameter" type="number" value="" step="1" placeholder="valfritt">
             <span>mm, används för mer noggrann avsmalning</span>
           </label>
-<label>Stocklängd <input id="logLength" type="number" value="0" step="10"><span>mm</span></label>
-<label>Krokighet / snöravvikelse <input id="sweep" type="number" value="0" step="1"><span>mm</span></label>
+<label>Stocklängd <input id="logLength" type="number" value="" step="10"><span>mm</span></label>
+<label>Krokighet / snöravvikelse <input id="sweep" type="number" value="" step="1"><span>mm</span></label>
 <label>Barktjocklek <input id="bark" type="number" value="0" step="1"><span>mm</span></label>
 </div></section>
 <section class="panel"><h2>Beräkning</h2><div class="metrics metrics-compact">
@@ -48,7 +48,7 @@
 
         <h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
 </div></section>
-<section id="bigTab" class="tabPage">
+<section id="bigTab" class="tabPage active">
   <section class="bigWorkScreen">
     <div class="bigWorkGrid">
       <section class="bigWorkMain">
