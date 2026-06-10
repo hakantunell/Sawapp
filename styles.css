@@ -49,3 +49,24 @@
 .support1{left:28%}.support2{right:28%}
 .supportLabel{position:absolute;bottom:4px;font-weight:900;color:#0f172a;background:rgba(255,255,255,.82);padding:2px 6px;border-radius:8px}
 .support1Label{left:18%}.support2Label{right:18%}
+
+/* Work screen desktop layout */
+#bigTab{height:calc(100vh - 126px);overflow:hidden}
+.bigWorkScreen{height:100%;background:#eef6fb;border:1px solid #d5e1ea;border-radius:18px;padding:10px;overflow:hidden}
+.bigWorkGrid{height:100%;display:grid;grid-template-columns:minmax(620px,1fr) 380px;gap:12px;align-items:stretch}
+.bigWorkMain{min-width:0;display:grid;grid-template-rows:minmax(260px,0.62fr) minmax(190px,0.38fr);gap:12px;height:100%}
+.bigWorkCanvasPanel,.bigWorkSidePanel,.bigDataPanel{background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:10px;box-shadow:0 8px 20px rgba(15,23,42,.06);overflow:hidden}
+.bigWorkCanvasPanel h2,.bigWorkSidePanel h2{font-size:1rem;margin:0 0 6px;color:#334155}
+.bigWorkCanvasPanel canvas{display:block;width:auto;height:calc(100% - 30px);max-width:100%;margin:0 auto;object-fit:contain}
+.bigWorkSidePanel .supportSideView{height:calc(100% - 30px);margin:0;padding:10px}.bigWorkSidePanel .supportDiagram{height:100%}
+.bigDataPanel{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bigStepLabel{font-size:1.8rem;font-weight:950;color:#0f172a;line-height:1.05}
+.bigRotationLabel{font-size:1rem;font-weight:850;color:#1e40af;line-height:1.25}
+.bigReferenceReadout{font-size:.9rem;color:#475569;min-height:1.2rem}
+.bigSupportCards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bigSupportCard{border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:10px;text-align:center}
+.bigSupportCard span{display:block;font-size:.75rem;font-weight:950;color:#1e40af;letter-spacing:.06em}.bigSupportCard strong{display:block;font-size:2.1rem;font-weight:950;color:#0f172a;line-height:1.05;margin-top:4px}
+.bigMeasuredData{display:flex;flex-direction:column;gap:7px;overflow:hidden}
+.measureRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid #cbd5e1;border-radius:12px;padding:8px;background:#f8fafc;font-size:.9rem}.measureRow span{font-weight:850;color:#334155}.measureRow strong{font-size:1.05rem;color:#0f172a}.measureRow em{font-style:normal;font-size:.72rem;font-weight:900;color:#64748b}.measure-ok{background:#dcfce7;border-color:#86efac}.measure-warn{background:#fef3c7;border-color:#fbbf24}.measure-empty{background:#f8fafc;color:#64748b}
+.bigDataPanel .bigControls{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}.bigDataPanel .bigControls button{font-size:1rem;padding:12px 10px}
+@media(max-width:1200px){#bigTab{height:auto;overflow:visible}.bigWorkScreen{height:auto;overflow:visible}.bigWorkGrid{grid-template-columns:1fr}.bigWorkMain{grid-template-rows:auto}.bigDataPanel{order:-1}.bigWorkCanvasPanel canvas{width:100%;height:auto}}
