@@ -5,9 +5,9 @@
 .wild-label{display:flex;gap:4px;align-items:center;margin:0;font-size:.78rem;font-weight:700}
 .wild-label input{width:auto}
 
-.tabs{display:flex;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #d5e1ea;position:sticky;top:0;z-index:5}
+.tabs{display:flex;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #d5e1ea;position:sticky;top:0;z-index:5;align-items:center}
 .tab{background:#e2e8f0;color:#0f172a;border-radius:999px;padding:10px 16px}
-.tab.active{background:#0f62fe;color:white}
+.tab.active{background:#0f62fe;color:white}.navBrand{margin-left:auto;font-size:.95rem;display:flex;gap:2px;align-items:baseline}.navBrand strong{font-weight:950}.navBrand span{color:#0f172a}
 .tabLayout{padding:14px}.tabPage{display:none}.tabPage.active{display:block}
 .twoCol{display:grid;grid-template-columns:minmax(340px,520px) 1fr;gap:14px;align-items:start}
 .planGrid{grid-template-columns:minmax(500px,1.1fr) minmax(420px,.9fr)}
@@ -26,9 +26,6 @@
 .sideYieldCard strong{display:block;color:#0f172a;margin-bottom:4px}
 .sideYieldCard span{display:block;font-weight:800;color:#166534}
 .sideYieldCard small{display:block;color:#64748b;margin-top:4px}
-
-.sideYieldCard small{line-height:1.25}
-
 .sideYieldCard small{line-height:1.25}
 
 /* v28: global vankant is deprecated; vankant is now per dimension */
@@ -51,14 +48,13 @@
 .support1Label{left:18%}.support2Label{right:18%}
 
 /* Work screen desktop layout */
-#bigTab{height:calc(100vh - 126px);overflow:hidden}
+#bigTab{height:calc(100vh - 92px);overflow:hidden}
 .bigWorkScreen{height:100%;background:#eef6fb;border:1px solid #d5e1ea;border-radius:18px;padding:10px;overflow:hidden}
 .bigWorkGrid{height:100%;display:grid;grid-template-columns:minmax(620px,1fr) 380px;gap:12px;align-items:stretch}
 .bigWorkMain{min-width:0;display:grid;grid-template-rows:minmax(260px,0.62fr) minmax(190px,0.38fr);gap:12px;height:100%}
 .bigWorkCanvasPanel,.bigWorkSidePanel,.bigDataPanel{background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:10px;box-shadow:0 8px 20px rgba(15,23,42,.06);overflow:hidden}
 .bigWorkCanvasPanel h2,.bigWorkSidePanel h2{font-size:1rem;margin:0 0 6px;color:#334155}
 .bigWorkCanvasPanel canvas{display:block;width:auto;height:calc(100% - 30px);max-width:100%;margin:0 auto;object-fit:contain}
-.bigWorkSidePanel .supportSideView{height:calc(100% - 30px);margin:0;padding:10px}.bigWorkSidePanel .supportDiagram{height:100%}
 .bigDataPanel{display:flex;flex-direction:column;gap:10px;min-width:0}
 .bigStepLabel{font-size:1.8rem;font-weight:950;color:#0f172a;line-height:1.05}
 .bigRotationLabel{font-size:1rem;font-weight:850;color:#1e40af;line-height:1.25}
@@ -69,4 +65,15 @@
 .bigMeasuredData{display:flex;flex-direction:column;gap:7px;overflow:hidden}
 .measureRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid #cbd5e1;border-radius:12px;padding:8px;background:#f8fafc;font-size:.9rem}.measureRow span{font-weight:850;color:#334155}.measureRow strong{font-size:1.05rem;color:#0f172a}.measureRow em{font-style:normal;font-size:.72rem;font-weight:900;color:#64748b}.measure-ok{background:#dcfce7;border-color:#86efac}.measure-warn{background:#fef3c7;border-color:#fbbf24}.measure-empty{background:#f8fafc;color:#64748b}
 .bigDataPanel .bigControls{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}.bigDataPanel .bigControls button{font-size:1rem;padding:12px 10px}
-@media(max-width:1200px){#bigTab{height:auto;overflow:visible}.bigWorkScreen{height:auto;overflow:visible}.bigWorkGrid{grid-template-columns:1fr}.bigWorkMain{grid-template-rows:auto}.bigDataPanel{order:-1}.bigWorkCanvasPanel canvas{width:100%;height:auto}}
+.voicePanel-work{border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:8px}.voicePanel-work .voiceToolbar{margin-bottom:6px}.voiceStatus{font-size:.88rem;line-height:1.35;color:#0f172a}.voiceListening{background:#16a34a!important}
+
+/* Stylized Logosol-style saw rig side view */
+.bigWorkSidePanel{padding:10px}.bigWorkSidePanel h2{margin-bottom:4px}.sawRigView{position:relative;height:calc(100% - 28px);min-height:185px;background:linear-gradient(#ffffff,#f7fbff);border:1px solid #dbe6ef;border-radius:14px;overflow:hidden}
+.rigTopBeam{position:absolute;left:2%;right:2%;top:52%;height:14px;background:#b7c0c5;border-radius:2px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.rigLowerBeam{position:absolute;left:20%;right:20%;top:76%;height:12px;background:#b7c0c5;border-radius:2px}
+.rigLeftLeg,.rigRightLeg{position:absolute;top:54%;width:14px;height:38%;background:#b7c0c5;border-radius:2px}.rigLeftLeg{left:19%}.rigRightLeg{right:19%}
+.rigBrace{position:absolute;top:58%;height:8px;background:#b7c0c5;transform-origin:left center;border-radius:999px}.rigBraceLeft{left:4%;width:39%;transform:rotate(17deg)}.rigBraceRight{right:4%;width:39%;transform:rotate(163deg);transform-origin:right center}
+.rigSupportBlock{position:absolute;top:44%;width:32px;height:26px;background:#f45113;border-radius:4px;box-shadow:0 1px 0 rgba(0,0,0,.18);z-index:4}.rigSupportLeft{left:17.7%}.rigSupportRight{right:17.7%}
+.sawRigView .logSide{position:absolute;left:8%;right:8%;top:22%;height:76px;background:linear-gradient(90deg,#7a5a3c,#b48b5d 10%,#8b6a49 22%,#c19a67 38%,#8b6846 58%,#b8905e 78%,#7a5a3c);border:3px solid #4b3424;border-radius:34px 22px 22px 34px;box-shadow:0 8px 14px rgba(15,23,42,.18);transform:none;z-index:5}.sawRigView .logSide::after{content:"";position:absolute;right:-4px;top:4px;width:18px;height:62px;border-radius:50%;background:radial-gradient(circle,#e5bf7a 0 35%,#c19153 36% 58%,#8b5a2b 59%);border-left:2px solid rgba(75,52,36,.35)}
+.sawRigView .supportLabel{bottom:5px;background:rgba(255,255,255,.92);font-size:.95rem;z-index:6}.sawRigView .support1Label{left:12%}.sawRigView .support2Label{right:12%}.logLengthLabel{position:absolute;left:40%;right:40%;bottom:5px;text-align:center;background:rgba(255,255,255,.92);border-radius:8px;padding:2px 6px;font-weight:950;color:#0f172a;z-index:6}
+@media(max-width:1200px){#bigTab{height:auto;overflow:visible}.bigWorkScreen{height:auto;overflow:visible}.bigWorkGrid{grid-template-columns:1fr}.bigWorkMain{grid-template-rows:auto}.bigDataPanel{order:-1}.bigWorkCanvasPanel canvas{width:100%;height:auto}.sawRigView{height:260px}}
