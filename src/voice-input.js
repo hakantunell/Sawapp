@@ -12,25 +12,15 @@
     { field: "bark", label: "Bark", patterns: [/bark/i, /barktjocklek/i] },
   ];
 
-  const VOICE_DEFAULT_CM_FIELDS = new Set([
-    "rootDiameter",
-    "topDiameter",
-    "rootEndDiameter",
-    "topEndDiameter",
-    "logLength",
-    "sweep",
-    "bark",
-  ]);
-
+  const VOICE_DEFAULT_CM_FIELDS = new Set(["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter", "logLength", "sweep", "bark"]);
   const MEASURED_LOG_FIELDS = ["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter", "logLength", "sweep"];
 
   const NUMBER_WORDS = new Map([
     ["noll", 0], ["en", 1], ["ett", 1], ["tva", 2], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
     ["sex", 6], ["sju", 7], ["atta", 8], ["åtta", 8], ["nio", 9], ["tio", 10], ["elva", 11], ["tolv", 12],
-    ["tretton", 13], ["fjorton", 14], ["femton", 15], ["sexton", 16], ["sjutton", 17],
-    ["arton", 18], ["nitton", 19], ["tjugo", 20], ["trettio", 30], ["fyrtio", 40],
-    ["femtio", 50], ["sextio", 60], ["sjuttio", 70], ["attio", 80], ["åttio", 80], ["nittio", 90],
-    ["hundra", 100], ["tusen", 1000],
+    ["tretton", 13], ["fjorton", 14], ["femton", 15], ["sexton", 16], ["sjutton", 17], ["arton", 18],
+    ["nitton", 19], ["tjugo", 20], ["trettio", 30], ["fyrtio", 40], ["femtio", 50], ["sextio", 60],
+    ["sjuttio", 70], ["attio", 80], ["åttio", 80], ["nittio", 90], ["hundra", 100], ["tusen", 1000],
   ]);
 
   const MAGNITUDE_WORDS = new Set(["hundra", "tusen"]);
@@ -43,8 +33,8 @@
   let recognition = null;
   let listening = false;
   let lastField = null;
-  let workflowMode = "measure";
   let audioContext = null;
+  let voiceInstalled = false;
 
   function recognitionCtor() {
     return global.SpeechRecognition || global.webkitSpeechRecognition || null;
@@ -70,8 +60,7 @@
   function parseNumberToken(token) {
     const normalized = normalizeText(token).replace(",", ".");
     if (/^-?\d+(\.\d+)?$/.test(normalized)) return Number(normalized);
-    if (NUMBER_WORDS.has(normalized)) return NUMBER_WORDS.get(normalized);
-    return null;
+    return NUMBER_WORDS.has(normalized) ? NUMBER_WORDS.get(normalized) : null;
   }
 
   function tokensAfterField(text, fieldId) {
@@ -91,28 +80,6 @@
     return rawTokens.filter((word) => !COMMAND_WORDS.has(word));
   }
 
-  function parseSpokenNumberTokens(tokens) {
-    const values = tokens
-      .map(parseNumberToken)
-      .filter((value) => value !== null && !Number.isNaN(value));
-
-    if (!values.length) return null;
-
-    if (values.length >= 2) {
-      const first = values[0];
-      const second = values[1];
-
-      // Vanlig sågverkslängd: "fyra sextio" / "4 60" betyder 460 cm.
-      if (first >= 1 && first <= 9 && second >= 0 && second < 100) {
-        return first * 100 + second;
-      }
-    }
-
-    if (values.length === 1) return values[0];
-
-    return values[values.length - 1];
-  }
-
   function parseSwedishNumberWords(tokens) {
     let total = 0;
     let current = 0;
@@ -122,18 +89,23 @@
       const value = parseNumberToken(token);
       if (value === null) continue;
       found = true;
-
-      if (token === "hundra") {
-        current = (current || 1) * 100;
-      } else if (token === "tusen") {
+      if (token === "hundra") current = (current || 1) * 100;
+      else if (token === "tusen") {
         total += (current || 1) * 1000;
         current = 0;
-      } else {
-        current += value;
-      }
+      } else current += value;
     }
 
     return found ? total + current : null;
+  }
+
+  function parseSpokenNumberTokens(tokens) {
+    const values = tokens.map(parseNumberToken).filter((value) => value !== null && !Number.isNaN(value));
+    if (!values.length) return null;
+    if (values.length >= 2 && values[0] >= 1 && values[0] <= 9 && values[1] >= 0 && values[1] < 100) {
+      return values[0] * 100 + values[1];
+    }
+    return values.length === 1 ? values[0] : values[values.length - 1];
   }
 
   function extractNumber(text, fieldId) {
@@ -143,36 +115,24 @@
       const relevantTokens = tokensAfterField(text, fieldId);
       const spoken = parseSpokenNumberTokens(relevantTokens);
       const wordNumber = parseSwedishNumberWords(relevantTokens);
-
       if (relevantTokens.some((token) => MAGNITUDE_WORDS.has(token)) && wordNumber !== null) return wordNumber;
-      if (digitMatches.length >= 2 && digitMatches[0] >= 1 && digitMatches[0] <= 9 && digitMatches[1] >= 0 && digitMatches[1] < 100) {
-        return digitMatches[0] * 100 + digitMatches[1];
-      }
+      if (digitMatches.length >= 2 && digitMatches[0] >= 1 && digitMatches[0] <= 9 && digitMatches[1] >= 0 && digitMatches[1] < 100) return digitMatches[0] * 100 + digitMatches[1];
       if (spoken !== null) return spoken;
-      if (digitMatches.length) return digitMatches[digitMatches.length - 1];
-      return null;
+      return digitMatches.length ? digitMatches[digitMatches.length - 1] : null;
     }
 
-    if (digitMatches.length) {
-      // Använd sista talet så att "stöd1 32" inte tolkas som värdet 1.
-      return digitMatches[digitMatches.length - 1];
-    }
+    if (digitMatches.length) return digitMatches[digitMatches.length - 1];
 
     const words = text.split(/\s+/);
     for (let i = words.length - 1; i >= 0; i -= 1) {
       const value = parseNumberToken(words[i]);
       if (value !== null) return value;
     }
-
     return null;
   }
 
   function findField(text) {
-    for (const alias of FIELD_ALIASES) {
-      if (alias.patterns.some((pattern) => pattern.test(text))) return alias;
-    }
-
-    return null;
+    return FIELD_ALIASES.find((alias) => alias.patterns.some((pattern) => pattern.test(text))) || null;
   }
 
   function hasMillimeterUnit(text) {
@@ -184,14 +144,8 @@
   }
 
   function measurementToMillimeters(fieldId, value, text) {
-    if (hasMillimeterUnit(text)) {
-      return { valueMm: value, sourceUnit: "mm", sourceValue: value };
-    }
-
-    if (hasCentimeterUnit(text) || VOICE_DEFAULT_CM_FIELDS.has(fieldId)) {
-      return { valueMm: value * 10, sourceUnit: "cm", sourceValue: value };
-    }
-
+    if (hasMillimeterUnit(text)) return { valueMm: value, sourceUnit: "mm", sourceValue: value };
+    if (hasCentimeterUnit(text) || VOICE_DEFAULT_CM_FIELDS.has(fieldId)) return { valueMm: value * 10, sourceUnit: "cm", sourceValue: value };
     return { valueMm: value, sourceUnit: "mm", sourceValue: value };
   }
 
@@ -219,16 +173,13 @@
     const AudioContextCtor = global.AudioContext || global.webkitAudioContext;
     if (!AudioContextCtor) return null;
     if (!audioContext) audioContext = new AudioContextCtor();
-    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
-      audioContext.resume().catch(() => {});
-    }
+    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") audioContext.resume().catch(() => {});
     return audioContext;
   }
 
   function playConfirmSound() {
     const ctx = ensureAudioContext();
     if (!ctx) return;
-
     try {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
@@ -242,15 +193,12 @@
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.14);
-    } catch (error) {
-      // Ljudkvittens är hjälpfunktion; röstflödet ska inte stoppas om ljudet misslyckas.
-    }
+    } catch (error) {}
   }
 
   function setFieldValue(fieldId, value) {
     const input = getInput(fieldId);
     if (!input) return false;
-
     input.value = String(Math.round(value));
     input.dispatchEvent(new global.Event("input", { bubbles: true }));
     input.dispatchEvent(new global.Event("change", { bubbles: true }));
@@ -260,14 +208,12 @@
   function resetMeasuredLogFields() {
     for (const fieldId of MEASURED_LOG_FIELDS) {
       const input = getInput(fieldId);
-      if (input) input.value = "0";
+      if (input) input.value = "";
     }
   }
 
   function buildCurrentContext() {
-    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
-      return global.SawUpdatePipeline.buildPlanContext();
-    }
+    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") return global.SawUpdatePipeline.buildPlanContext();
     return null;
   }
 
@@ -276,19 +222,9 @@
       global.SawWorkScreen.activateWorkScreen();
       return true;
     }
-    return activateTab("bigTab");
-  }
-
-  function activateTab(tabId) {
-    const tabButton = global.document.querySelector(`.tab[data-tab="${tabId}"]`);
-    if (tabButton) {
-      tabButton.click();
-      return true;
-    }
-
-    global.document.querySelectorAll(".tabPage").forEach((page) => page.classList.toggle("active", page.id === tabId));
-    global.document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabId));
-    return false;
+    const tabButton = global.document.querySelector('.tab[data-tab="bigTab"]');
+    if (tabButton) tabButton.click();
+    return true;
   }
 
   function describeStep(context) {
@@ -304,7 +240,6 @@
   function parseVoiceCommand(rawText) {
     const text = normalizeText(rawText);
     if (!text) return null;
-
     if (isDoneCommand(text)) return { ok: true, type: "done", text };
     if (isNextCutCommand(text)) return { ok: true, type: "next-cut", text };
     if (isPreviousCutCommand(text)) return { ok: true, type: "previous-cut", text };
@@ -312,26 +247,13 @@
 
     let field = findField(text);
     const number = field ? extractNumber(text, field.field) : extractNumber(text, lastField);
-
     if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) {
       field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
     }
-
-    if (!field || number === null || Number.isNaN(number)) {
-      return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
-    }
+    if (!field || number === null || Number.isNaN(number)) return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
 
     const measurement = measurementToMillimeters(field.field, number, text);
-    return {
-      ok: true,
-      type: "field",
-      text,
-      field: field.field,
-      label: field.label,
-      value: measurement.valueMm,
-      sourceValue: measurement.sourceValue,
-      sourceUnit: measurement.sourceUnit,
-    };
+    return { ok: true, type: "field", text, field: field.field, label: field.label, value: measurement.valueMm, sourceValue: measurement.sourceValue, sourceUnit: measurement.sourceUnit };
   }
 
   function setStatus(message, kind) {
@@ -343,10 +265,7 @@
 
   function handleDoneCommand() {
     lastField = null;
-    workflowMode = "cut";
-    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
-      global.SawState.resetCurrentStepIndex();
-    }
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") global.SawState.resetCurrentStepIndex();
     if (typeof global.update === "function") global.update();
     activateWorkScreen();
     playConfirmSound();
@@ -360,22 +279,16 @@
       setStatus("Ingen sågplan finns ännu. Mät stöd 1, stöd 2 och längd först.", "warn");
       return false;
     }
-
     const currentIndex = Number(before.stepIndex || 0);
     const lastIndex = Number(before.activePlanLength || 1) - 1;
     const nextIndex = Math.max(0, Math.min(lastIndex, currentIndex + Number(delta || 0)));
-
-    workflowMode = "cut";
     if (nextIndex === currentIndex) {
       activateWorkScreen();
       playConfirmSound();
       setStatus(delta > 0 ? "Sista snittet. Säg “ny stock” när du börjar med nästa stock." : "Första snittet.", "ok");
       return true;
     }
-
-    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-      global.SawState.setCurrentStepIndex(nextIndex);
-    }
+    if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") global.SawState.setCurrentStepIndex(nextIndex);
     if (typeof global.update === "function") global.update();
     activateWorkScreen();
     playConfirmSound();
@@ -384,16 +297,13 @@
   }
 
   function handleNewLogCommand() {
-    workflowMode = "measure";
     lastField = null;
     resetMeasuredLogFields();
-    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
-      global.SawState.resetCurrentStepIndex();
-    }
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") global.SawState.resetCurrentStepIndex();
     if (typeof global.update === "function") global.update();
     activateWorkScreen();
     playConfirmSound();
-    setStatus("Ny stock. Stanna på arbetsskärmen och ange nya värden, t.ex. “stöd1 32”, “stöd2 30” och “längd fyra sextio”.", "listening");
+    setStatus("Ny stock. Ange nya värden, t.ex. “stöd1 32”, “stöd2 30” och “längd fyra sextio”.", "listening");
     return true;
   }
 
@@ -403,22 +313,16 @@
       setStatus(`Jag hörde: “${rawText}”. Tolkade som: “${parsed ? parsed.text : ""}”. ${parsed ? parsed.reason : "Kunde inte tolka kommandot."}`, "warn");
       return false;
     }
-
     if (parsed.type === "done") return handleDoneCommand();
     if (parsed.type === "next-cut") return handleMoveCut(1);
     if (parsed.type === "previous-cut") return handleMoveCut(-1);
     if (parsed.type === "new-log") return handleNewLogCommand();
-
     if (!setFieldValue(parsed.field, parsed.value)) {
       setStatus(`Kunde inte sätta ${parsed.label}.`, "warn");
       return false;
     }
-
-    workflowMode = "measure";
     lastField = parsed.field;
-    if (global.SawWorkScreen && typeof global.SawWorkScreen.hasMinimumLogInput === "function" && global.SawWorkScreen.hasMinimumLogInput()) {
-      activateWorkScreen();
-    }
+    if (global.SawWorkScreen && typeof global.SawWorkScreen.hasMinimumLogInput === "function" && global.SawWorkScreen.hasMinimumLogInput()) activateWorkScreen();
     playConfirmSound();
     setStatus(`${parsed.label}: ${parsed.sourceValue} ${parsed.sourceUnit} (${Math.round(parsed.value)} mm)`, "ok");
     return true;
@@ -427,44 +331,35 @@
   function createRecognition() {
     const Ctor = recognitionCtor();
     if (!Ctor) return null;
-
     const instance = new Ctor();
     instance.lang = "sv-SE";
     instance.continuous = true;
     instance.interimResults = false;
     instance.maxAlternatives = 3;
-
     instance.onstart = () => {
       listening = true;
       updateButtonState();
       ensureAudioContext();
       setStatus("Lyssnar… säg mått i centimeter, “nästa snitt” eller “ny stock”.", "listening");
     };
-
     instance.onend = () => {
       listening = false;
       updateButtonState();
     };
-
     instance.onerror = (event) => {
       listening = false;
       updateButtonState();
       setStatus(`Röstfel: ${event.error || "okänt fel"}.`, "warn");
     };
-
     instance.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (!result.isFinal) continue;
-
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
-        if (!applied && alternatives.length) {
-          setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “längd fyra sextio”, “nästa snitt” eller “ny stock”.`, "warn");
-        }
+        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “stöd2 30”, “längd fyra sextio”, “nästa snitt” eller “ny stock”.`, "warn");
       }
     };
-
     return instance;
   }
 
@@ -473,10 +368,8 @@
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
       return;
     }
-
     if (!recognition) recognition = createRecognition();
     if (!recognition || listening) return;
-
     try {
       ensureAudioContext();
       recognition.start();
@@ -502,47 +395,34 @@
   }
 
   function installVoiceInput() {
-    const stockPanel = global.document.querySelector("#stockTab .panel");
-    if (!stockPanel || getInput("voiceInputPanel")) return;
-
-    const panel = global.document.createElement("div");
-    panel.id = "voiceInputPanel";
-    panel.className = "voicePanel";
-    panel.innerHTML = `
-      <div class="toolbar voiceToolbar">
-        <button id="voiceInputToggle" type="button">Starta röstinmatning</button>
-      </div>
-      <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Arbetsskärmen används hela tiden. Säg “nästa snitt” i sågplanen och “ny stock” för nästa mätning.</div>
-    `;
-
-    const hint = stockPanel.querySelector(".hint");
-    if (hint && hint.nextSibling) stockPanel.insertBefore(panel, hint.nextSibling);
-    else stockPanel.appendChild(panel);
+    let panel = getInput("voiceInputPanel");
+    if (!panel) {
+      const target = global.document.querySelector(".bigDataPanel") || global.document.querySelector("#stockTab .panel");
+      if (!target) return;
+      panel = global.document.createElement("div");
+      panel.id = "voiceInputPanel";
+      panel.className = "voicePanel voicePanel-work";
+      panel.innerHTML = `
+        <div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div>
+        <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt” och “ny stock”.</div>
+      `;
+      target.prepend(panel);
+    }
 
     const button = getInput("voiceInputToggle");
-    if (button) button.addEventListener("click", toggleListening);
-
+    if (button && !voiceInstalled) {
+      button.addEventListener("click", toggleListening);
+      voiceInstalled = true;
+    }
     if (!supportsSpeechRecognition()) {
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
       if (button) button.disabled = true;
     }
-
     updateButtonState();
   }
 
-  global.SawVoiceInput = {
-    install: installVoiceInput,
-    start: startListening,
-    stop: stopListening,
-    toggle: toggleListening,
-    parseVoiceCommand,
-    applyVoiceCommand,
-    supportsSpeechRecognition,
-  };
+  global.SawVoiceInput = { install: installVoiceInput, start: startListening, stop: stopListening, toggle: toggleListening, parseVoiceCommand, applyVoiceCommand, supportsSpeechRecognition };
 
-  if (global.document.readyState === "loading") {
-    global.document.addEventListener("DOMContentLoaded", installVoiceInput);
-  } else {
-    installVoiceInput();
-  }
+  if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", installVoiceInput);
+  else installVoiceInput();
 })(window);
