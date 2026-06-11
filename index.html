@@ -10,14 +10,8 @@
 <section class="panel"><h2>Stockprofil</h2><p class="hint">Förinställningar för den typ av stockar som ska sågas, till exempel trädslag och grundvärden. Stockunika mått anges på Sågskärmen.</p><div class="grid2">
 <label>Diameter stöd 1 <input id="rootDiameter" type="number" value="" step="1"><span>mm</span></label>
 <label>Diameter stöd 2 <input id="topDiameter" type="number" value="" step="1"><span>mm</span></label>
-          <label>Rotända, valfritt
-            <input id="rootEndDiameter" type="number" value="" step="1" placeholder="valfritt">
-            <span>mm, används för mer noggrann avsmalning</span>
-          </label>
-          <label>Toppända, valfritt
-            <input id="topEndDiameter" type="number" value="" step="1" placeholder="valfritt">
-            <span>mm, används för mer noggrann avsmalning</span>
-          </label>
+<label>Rotända, valfritt <input id="rootEndDiameter" type="number" value="" step="1" placeholder="valfritt"><span>mm, används för mer noggrann avsmalning</span></label>
+<label>Toppända, valfritt <input id="topEndDiameter" type="number" value="" step="1" placeholder="valfritt"><span>mm, används för mer noggrann avsmalning</span></label>
 <label>Stocklängd <input id="logLength" type="number" value="" step="10"><span>mm</span></label>
 <label>Krokighet / snöravvikelse <input id="sweep" type="number" value="" step="1"><span>mm</span></label>
 <label>Barktjocklek <input id="bark" type="number" value="0" step="1"><span>mm</span></label>
@@ -32,62 +26,44 @@
 </section></section>
 <section id="planTab" class="tabPage"><div class="twoCol planGrid"><section class="panel"><h2>Sågbild</h2><canvas id="sawCanvas" width="780" height="620"></canvas><div class="legend"><span><i class="bark"></i>Bark</span><span><i class="chain"></i>Svärd/kedja</span><span><i class="bed"></i>Bädd/stockstöd</span><span><i class="block"></i>Block</span></div></section>
 <section class="panel"><h2>Sågordning</h2><div id="sawOrder"></div><h2>Sidoutbyte</h2><div id="sideYield"></div>
-        <h2>Sågvy – stöd 1 / stöd 2</h2>
-        <div id="supportSideView" class="supportSideView">
-          <div class="sawHead">Sågaggregat</div>
-          <div class="supportDiagram">
-            <div class="bladeLine"></div>
-            <div class="logSide"></div>
-            <div class="support support1"></div>
-            <div class="support support2"></div>
-            <div id="support1Label" class="supportLabel support1Label">Stöd 1: –</div>
-            <div id="support2Label" class="supportLabel support2Label">Stöd 2: –</div>
-          </div>
-        </div>
-
-        <h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
+<h2>Sågvy – stöd 1 / stöd 2</h2>
+<div id="supportSideView" class="supportSideView"><div class="sawHead">Sågaggregat</div><div class="supportDiagram"><div class="bladeLine"></div><div class="logSide"></div><div class="support support1"></div><div class="support support2"></div><div id="support1Label" class="supportLabel support1Label">Stöd 1: –</div><div id="support2Label" class="supportLabel support2Label">Stöd 2: –</div></div></div>
+<h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
 </div></section>
 <section id="bigTab" class="tabPage active">
-  <section class="bigWorkScreen">
-    <div class="bigWorkGrid">
-      <section class="bigWorkMain">
-        <section class="bigWorkCanvasPanel">
-          <h2>Sågbild</h2>
-          <canvas id="bigSawCanvas" width="780" height="620"></canvas>
-        </section>
-        <section class="bigWorkSidePanel">
-          <h2>Sågvy</h2>
-          <div id="bigSupportSideView" class="supportSideView bigSupportSideView">
-            <div class="sawHead">Sågaggregat</div>
-            <div class="supportDiagram">
-              <div class="bladeLine"></div>
-              <div class="logSide"></div>
-              <div class="support support1"></div>
-              <div class="support support2"></div>
-              <div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
-              <div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
-            </div>
-          </div>
-        </section>
-      </section>
-      <aside class="bigDataPanel">
-        <div id="voiceInputPanel" class="voicePanel voicePanel-work">
-          <div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div>
-          <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt” och “ny stock” utan att lämna Sågskärmen.</div>
-        </div>
-        <div id="bigStep" class="bigStepLabel">Ingen sågplan</div>
-        <div id="bigRotation" class="bigRotationLabel">Ange stöd 1, stöd 2 och längd.</div>
-        <div id="bigReference" class="bigReferenceReadout">–</div>
-        <div class="bigSupportCards">
-          <div class="bigSupportCard"><span>STÖD 1</span><strong id="bigSupport1Value">–</strong></div>
-          <div class="bigSupportCard"><span>STÖD 2</span><strong id="bigSupport2Value">–</strong></div>
-        </div>
-        <div id="bigMeasuredData" class="bigMeasuredData"></div>
-        <div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div>
-      </aside>
-    </div>
-  </section>
-  <button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div>
+<section class="bigWorkScreen">
+<div class="bigWorkGrid">
+<section class="bigWorkMain">
+<section class="bigWorkCanvasPanel"><h2>Sågbild</h2><canvas id="bigSawCanvas" width="780" height="620"></canvas></section>
+<section class="bigWorkSidePanel"><h2>Sågvy</h2>
+<div id="bigSupportSideView" class="sawRigView">
+<div class="rigTopBeam"></div>
+<div class="rigLeftLeg"></div>
+<div class="rigRightLeg"></div>
+<div class="rigLowerBeam"></div>
+<div class="rigBrace rigBraceLeft"></div>
+<div class="rigBrace rigBraceRight"></div>
+<div class="rigSupportBlock rigSupportLeft"></div>
+<div class="rigSupportBlock rigSupportRight"></div>
+<div class="logSide"></div>
+<div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
+<div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
+<div id="bigLogLengthLabel" class="logLengthLabel">Längd: –</div>
+</div>
+</section>
+</section>
+<aside class="bigDataPanel">
+<div id="voiceInputPanel" class="voicePanel voicePanel-work"><div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div><div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “stöd1 32”, “stöd2 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt” och “ny stock” utan att lämna Sågskärmen.</div></div>
+<div id="bigStep" class="bigStepLabel">Ingen sågplan</div>
+<div id="bigRotation" class="bigRotationLabel">Ange stöd 1, stöd 2 och längd.</div>
+<div id="bigReference" class="bigReferenceReadout">–</div>
+<div class="bigSupportCards"><div class="bigSupportCard"><span>STÖD 1</span><strong id="bigSupport1Value">–</strong></div><div class="bigSupportCard"><span>STÖD 2</span><strong id="bigSupport2Value">–</strong></div></div>
+<div id="bigMeasuredData" class="bigMeasuredData"></div>
+<div class="stepControls bigControls"><button id="bigPrevStep">← Föregående</button><button id="bigNextStep">Nästa →</button></div>
+</aside>
+</div>
+</section>
+<button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div>
 </section>
 <section id="settingsTab" class="tabPage"><section class="panel settingsPanel"><h2>Inställningar för såg</h2><p class="hint">Värden som normalt inte ändras för varje stock.</p><div class="grid2">
 <label>Sågmodell <select id="sawModel"><option value="logosol-m7">Logosol M7 / liknande</option><option value="custom">Egen såg</option></select><span>framtida standardvärden</span></label>
