@@ -46,7 +46,6 @@
       topEndDiameter: [100, 800],
       logLength: [1500, 8000],
       sweep: [0, 300],
-      bark: [0, 80],
     };
 
     const [min, max] = ranges[id] || [0, Number.MAX_SAFE_INTEGER];
@@ -64,7 +63,6 @@
       ["topEndDiameter", "Toppända"],
       ["logLength", "Stocklängd"],
       ["sweep", "Krokighet"],
-      ["bark", "Bark"],
     ];
 
     target.innerHTML = rows.map(([id, label]) => {
@@ -86,7 +84,13 @@
 
   function renderSupportView(context) {
     const bigView = $("bigSupportSideView");
-    if (!bigView || !context || !context.step) return false;
+    if (!bigView) return false;
+
+    const length = numberFromInput("logLength");
+    const lengthLabel = $("bigLogLengthLabel");
+    if (lengthLabel) lengthLabel.textContent = `Längd: ${length ? formatMm(length) : "–"}`;
+
+    if (!context || !context.step) return false;
 
     const step = context.step;
     const geom = context.geom;
@@ -105,10 +109,10 @@
 
     const log = bigView.querySelector(".logSide");
     if (log && geom) {
-      const d1 = geom.support1Diameter || 0;
-      const d2 = geom.support2Diameter || 0;
-      log.style.setProperty("--d1", `${Math.max(18, Math.min(70, d1 / 5))}px`);
-      log.style.setProperty("--d2", `${Math.max(18, Math.min(70, d2 / 5))}px`);
+      const d1 = geom.support1Diameter || numberFromInput("rootDiameter") || 0;
+      const d2 = geom.support2Diameter || numberFromInput("topDiameter") || 0;
+      const visualHeight = Math.max(34, Math.min(92, Math.max(d1, d2) / 5));
+      log.style.setProperty("--log-height", `${visualHeight}px`);
     }
 
     return true;
