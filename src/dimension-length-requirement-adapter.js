@@ -28,6 +28,7 @@
       }
 
       #dimensionsTab .dim-length-pct {
+        display: block;
         width: 100%;
         min-width: 72px;
         padding: 7px;
@@ -60,11 +61,14 @@
   function ensureHeader() {
     const header = document.querySelector("#dimensionsTab .dimensionHeader");
     if (!header || header.querySelector("span[data-length-header]")) return;
-    const resultHeader = Array.from(header.children).find((el) => el.textContent.trim() === "Resultat");
+
+    // Raden renderas som: ... Vankant, Längdkrav, Vildmark, Resultat.
+    // Därför måste headern in före Vildmark, inte före Resultat.
+    const wildHeader = Array.from(header.children).find((el) => el.textContent.trim() === "Vildmark");
     const lengthHeader = document.createElement("span");
     lengthHeader.textContent = "Längdkrav %";
     lengthHeader.dataset.lengthHeader = "true";
-    if (resultHeader) header.insertBefore(lengthHeader, resultHeader);
+    if (wildHeader) header.insertBefore(lengthHeader, wildHeader);
     else header.appendChild(lengthHeader);
   }
 
@@ -107,8 +111,7 @@
       else row.appendChild(input);
 
       if (summary) {
-        const base = summary.textContent.replace(/\s*·\s*\d+\s*%\s*längd\s*$/, "");
-        summary.textContent = `${base} · ${lengthPct(dimension)} % längd`;
+        summary.textContent = summary.textContent.replace(/\s*·\s*\d+\s*%\s*längd\s*$/, "");
       }
     });
 
