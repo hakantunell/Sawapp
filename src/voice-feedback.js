@@ -1,9 +1,10 @@
 // src/voice-feedback.js
-// Talad återkoppling när mätläge/röstinmatning startas och stoppas.
+// Ljudåterkoppling när mätläge/röstinmatning startas och stoppas.
 
 (function initVoiceFeedback(global) {
   let lastKnownListening = null;
-  let lastSpokenAt = 0;
+  let lastSignalAt = 0;
+  let audioContext = null;
 
   function voiceButton() {
     return global.document.getElementById("voiceInputToggle");
@@ -15,32 +16,57 @@
     return button.classList.contains("voiceListening") || /stoppa/i.test(button.textContent || "");
   }
 
-  function speak(text) {
-    if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return;
-    const now = Date.now();
-    if (now - lastSpokenAt < 350) return;
-    lastSpokenAt = now;
+  function ensureAudioContext() {
+    const AudioContextCtor = global.AudioContext || global.webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    if (!audioContext) audioContext = new AudioContextCtor();
+    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
+      audioContext.resume().catch(() => {});
+    }
+    return audioContext;
+  }
 
+  function playTone(frequency, startOffset, duration, volume) {
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
     try {
-      global.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "sv-SE";
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      global.speechSynthesis.speak(utterance);
+      const now = ctx.currentTime + Number(startOffset || 0);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume || 0.09, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
     } catch (error) {}
   }
 
-  function announceCurrentState(force) {
+  function playStartSignal() {
+    playTone(1000, 0, 0.08, 0.09);
+    playTone(1000, 0.15, 0.08, 0.09);
+  }
+
+  function playStopSignal() {
+    playTone(600, 0, 0.42, 0.085);
+  }
+
+  function signalCurrentState(force) {
     const listening = isListening();
     if (!force && listening === lastKnownListening) return;
+    const now = Date.now();
+    if (now - lastSignalAt < 250) return;
+    lastSignalAt = now;
     lastKnownListening = listening;
-    speak(listening ? "Mätläge påbörjat" : "Mätläge avslutat");
+    if (listening) playStartSignal();
+    else playStopSignal();
   }
 
   function afterVoiceToggle() {
-    global.setTimeout(() => announceCurrentState(false), 120);
+    global.setTimeout(() => signalCurrentState(false), 140);
   }
 
   function install() {
@@ -61,7 +87,7 @@
     if (button) button.title = "Play/Pause på hörlurarna startar eller stoppar mätläge.";
   }
 
-  global.SawVoiceFeedback = { speak, announceCurrentState };
+  global.SawVoiceFeedback = { playStartSignal, playStopSignal, signalCurrentState };
 
   if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", install);
   else install();
