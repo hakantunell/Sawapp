@@ -18,6 +18,14 @@
     return Number.isFinite(number) ? `${number.toFixed(0)} mm` : "–";
   }
 
+  function formatBladeHeight(value) {
+    if (global.SawFormat && typeof global.SawFormat.formatBladeHeight === "function") {
+      return global.SawFormat.formatBladeHeight(value);
+    }
+    if (typeof global.formatBladeHeight === "function") return global.formatBladeHeight(value);
+    return formatMm(value);
+  }
+
   function formatCm(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return "–";
@@ -106,13 +114,13 @@
 
     const s1 = $("bigSupport1Label");
     const s2 = $("bigSupport2Label");
-    if (s1) s1.textContent = `Stöd 1: ${formatMm(h1)}`;
-    if (s2) s2.textContent = `Stöd 2: ${formatMm(h2)}`;
+    if (s1) s1.textContent = `Stöd 1: ${formatBladeHeight(h1)}`;
+    if (s2) s2.textContent = `Stöd 2: ${formatBladeHeight(h2)}`;
 
     const bigS1 = $("bigSupport1Value");
     const bigS2 = $("bigSupport2Value");
-    if (bigS1) bigS1.textContent = formatMm(h1);
-    if (bigS2) bigS2.textContent = formatMm(h2);
+    if (bigS1) bigS1.textContent = formatBladeHeight(h1);
+    if (bigS2) bigS2.textContent = formatBladeHeight(h2);
 
     const log = bigView.querySelector(".logSide");
     if (log && geom) {
