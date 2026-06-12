@@ -68,6 +68,7 @@
     "src/legacy-app/92-update-rendering.js",
     "src/work-screen.js",
     "src/blade-height-display-adapter.js",
+    "src/local-db.js",
     "src/legacy-app/90-update.js",
     "src/dimensions-editor.js",
     "src/dimensions-editor-adapter.js",
