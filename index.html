@@ -65,6 +65,8 @@
 <label>Kantmarginal <input id="margin" type="number" value="0" step="1"><span>mm</span></label>
 <label>Global vankant (används ej) <input id="cornerWane" type="number" value="0" step="1"><span>vankant anges numera per dimension</span></label>
 <label>Profilradie efter fräsning <input id="profileRadius" type="number" value="0" step="1"><span>mm</span></label>
+<label>Enhet för bladhöjd <select id="bladeHeightUnit"><option value="mm">Millimeter</option><option value="inch">Tum, bråk</option></select><span>Påverkar stödhöjder, måttpilar och skärhöjder.</span></label>
+<label>Upplösning för tumstock <select id="bladeHeightInchResolution"><option value="8">1/8″ vanlig sågartumstock</option><option value="16" selected>1/16″ snickeritumstock</option><option value="32">1/32″ nära millimeterprecision</option></select><span>Används när bladhöjd visas i tum.</span></label>
 <label>Standard rotationsordning <select id="rotationPreset"><option value="standard">Standard: 0° → 90° → 180° → 270°</option><option value="opposite-first">Motstående först: 0° → 180° → 90° → 270°</option><option value="manual">Manuell ordning</option></select></label>
 <label id="manualRotationWrap" class="hidden">Manuell rotation <input id="manualRotation" type="text" value="0,180,90,270"><span>grader kommaseparerat</span></label>
 <label>Optimera för <select id="optimizationMode"><option value="timber">Timmerblock</option><option value="plank">Plank / fri bredd</option><option value="panel">Panel / minbredd</option><option value="mixed">Blandat enligt prioritet</option><option value="sawmill">Sågverk / packning</option></select></label>
