@@ -20,9 +20,7 @@
     const AudioContextCtor = global.AudioContext || global.webkitAudioContext;
     if (!AudioContextCtor) return null;
     if (!audioContext) audioContext = new AudioContextCtor();
-    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
-      audioContext.resume().catch(() => {});
-    }
+    if (audioContext.state === "suspended" && typeof audioContext.resume === "function") audioContext.resume().catch(() => {});
     return audioContext;
   }
 
@@ -36,7 +34,7 @@
       osc.type = "sine";
       osc.frequency.setValueAtTime(frequency, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(volume || 0.09, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(volume || 0.12, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -46,17 +44,15 @@
   }
 
   function playStartSignal() {
-    playTone(1000, 0, 0.08, 0.09);
-    playTone(1000, 0.15, 0.08, 0.09);
+    playTone(1000, 0, 0.08, 0.12);
+    playTone(1000, 0.15, 0.08, 0.12);
   }
 
   function playStopSignal() {
-    playTone(600, 0, 0.42, 0.085);
+    playTone(600, 0, 0.42, 0.11);
   }
 
-  function signalCurrentState(force) {
-    const listening = isListening();
-    if (!force && listening === lastKnownListening) return;
+  function playStateSignal(listening) {
     const now = Date.now();
     if (now - lastSignalAt < 250) return;
     lastSignalAt = now;
@@ -65,8 +61,14 @@
     else playStopSignal();
   }
 
+  function signalCurrentState(force) {
+    const listening = isListening();
+    if (!force && listening === lastKnownListening) return;
+    playStateSignal(listening);
+  }
+
   function afterVoiceToggle() {
-    global.setTimeout(() => signalCurrentState(false), 140);
+    global.setTimeout(() => signalCurrentState(false), 250);
   }
 
   function install() {
@@ -74,12 +76,15 @@
 
     global.addEventListener("keydown", (event) => {
       if (event.key !== "MediaPlayPause") return;
-      afterVoiceToggle();
+      if (event.repeat) return;
+      ensureAudioContext();
+      playStateSignal(!lastKnownListening);
     }, true);
 
     global.document.addEventListener("click", (event) => {
       const target = event.target;
       if (!target || target.id !== "voiceInputToggle") return;
+      ensureAudioContext();
       afterVoiceToggle();
     }, true);
 
