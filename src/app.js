@@ -72,6 +72,7 @@
     "src/dimensions-editor-adapter.js",
     "src/dimensions-editor-activation-adapter.js",
     "src/big-step-navigation-fix.js",
+    "src/voice-special-commands.js",
     "src/voice-input.js",
     "src/voice-feedback.js"
   ];
