@@ -27,6 +27,7 @@
     );
     const outerR = geom.designDiameter / 2 * scale;
     const usableR = geom.usableDiameter / 2 * scale;
+    const kerfPx = Math.max(1, (Number(v.kerf) || 0) * scale);
     const bedY = outerR;
 
     const stepIndex = global.SawState && typeof global.SawState.getCurrentStepIndex === "function"
@@ -55,6 +56,7 @@
       scale,
       outerR,
       usableR,
+      kerfPx,
       bedY,
       stepIndex,
       planStep,
@@ -131,45 +133,68 @@
     ctx.fillText("bädd / stockstöd", -outerR - 65, bedY + 22);
   }
 
-  function bladeLocalY(planStep) {
-    if (!planStep || !planStep.source) return null;
+  function bladeBoundary(planStep) {
+    if (!planStep || !planStep.source || typeof global.slabCutBoundaryForStep !== "function") return null;
+    return global.slabCutBoundaryForStep(planStep);
+  }
 
-    const theta = global.rotationToRadians(planStep.rotationValue || 0);
-    const rb0 = global.rotatedRectBounds({
-      x: planStep.source.x,
-      y: planStep.source.y,
-      w: planStep.source.w,
-      h: planStep.source.h,
-    }, theta);
+  function drawLocalKerfBand(ctx, layout, boundary) {
+    const { outerR, kerfPx, scale } = layout;
+    if (!boundary || !Number.isFinite(kerfPx) || kerfPx <= 1) return;
+    const margin = 65;
+    const v = boundary.value * scale;
 
-    if (planStep.kind === "slab") return { rb0, value: rb0.minY };
-    if (planStep.kind === "side") return { rb0, value: rb0.maxY };
-    return { rb0, value: planStep.side === "bottom" ? rb0.maxY : rb0.minY };
+    ctx.save();
+    ctx.fillStyle = "rgba(239, 68, 68, .18)";
+    ctx.strokeStyle = "rgba(239, 68, 68, .35)";
+    ctx.lineWidth = 1;
+    if (boundary.axis === "y") {
+      ctx.fillRect(-outerR - margin, v - kerfPx, 2 * (outerR + margin), kerfPx);
+      ctx.strokeRect(-outerR - margin, v - kerfPx, 2 * (outerR + margin), kerfPx);
+    } else {
+      ctx.fillRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
+      ctx.strokeRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
+    }
+    ctx.restore();
   }
 
   function drawPackingBlade(layout) {
     const { ctx, outerR, bedY, scale, yShift, planStep } = layout;
-    const blade = bladeLocalY(planStep);
-    if (!planStep || !planStep.source || !blade) return;
+    const boundary = bladeBoundary(planStep);
+    if (!planStep || !planStep.source || !boundary) return;
 
-    const bladeY = yShift + blade.value * scale;
-    const minX = blade.rb0.minX * scale;
-    const maxX = blade.rb0.maxX * scale;
+    const margin = 65;
+    const valuePx = boundary.value * scale;
+
+    // Rita svärdet i exakt samma lokala koordinatsystem som packningsbitarna och
+    // slabbsnitten. Då hamnar linjen på samma kant som senare tas bort när man
+    // trycker Nästa, i stället för att räknas om i ett separat skärmkoordinatsystem.
+    ctx.save();
+    ctx.translate(0, yShift);
+    ctx.rotate(layout.theta);
+
+    drawLocalKerfBand(ctx, layout, boundary);
 
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 4;
     ctx.setLineDash([10, 6]);
     ctx.beginPath();
-    ctx.moveTo(minX - 30, bladeY);
-    ctx.lineTo(maxX + 30, bladeY);
+    if (boundary.axis === "y") {
+      ctx.moveTo(-outerR - margin, valuePx);
+      ctx.lineTo(outerR + margin, valuePx);
+    } else {
+      ctx.moveTo(valuePx, -outerR - margin);
+      ctx.lineTo(valuePx, outerR + margin);
+    }
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.restore();
 
     ctx.fillStyle = "#ef4444";
     ctx.font = "bold 16px system-ui";
     ctx.textAlign = "center";
     ctx.fillText(
-      `Aktuellt steg ${planStep.step}: ${planStep.kind === "side" ? "frigör" : "blocka"} ${planStep.label}`,
+      `Aktuellt steg ${planStep.step}: ${planStep.kind === "side" ? "frigör" : "ta bort ytterdel"} ${planStep.label}`,
       0,
       -outerR - 18
     );
