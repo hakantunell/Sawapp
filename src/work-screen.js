@@ -97,6 +97,24 @@
     return true;
   }
 
+  function hasMinimumLogInput() {
+    const root = numberFromInput("rootDiameter");
+    const top = numberFromInput("topDiameter");
+    const length = numberFromInput("logLength");
+    return root > 0 && top > 0 && length > 0;
+  }
+
+  function clearSupportHeightReadouts() {
+    const s1 = $("bigSupport1Label");
+    const s2 = $("bigSupport2Label");
+    const bigS1 = $("bigSupport1Value");
+    const bigS2 = $("bigSupport2Value");
+    if (s1) s1.textContent = "Såghöjd stöd 1: –";
+    if (s2) s2.textContent = "Såghöjd stöd 2: –";
+    if (bigS1) bigS1.textContent = "–";
+    if (bigS2) bigS2.textContent = "–";
+  }
+
   function renderSupportView(context) {
     const bigView = $("bigSupportSideView");
     if (!bigView) return false;
@@ -105,7 +123,10 @@
     const lengthLabel = $("bigLogLengthLabel");
     if (lengthLabel) lengthLabel.textContent = `Längd: ${length ? formatCm(length) : "–"}`;
 
-    if (!context || !context.step) return false;
+    if (!hasMinimumLogInput() || !context || !context.step) {
+      clearSupportHeightReadouts();
+      return false;
+    }
 
     const step = context.step;
     const geom = context.geom;
@@ -114,8 +135,8 @@
 
     const s1 = $("bigSupport1Label");
     const s2 = $("bigSupport2Label");
-    if (s1) s1.textContent = `Stöd 1: ${formatBladeHeight(h1)}`;
-    if (s2) s2.textContent = `Stöd 2: ${formatBladeHeight(h2)}`;
+    if (s1) s1.textContent = `Såghöjd stöd 1: ${formatBladeHeight(h1)}`;
+    if (s2) s2.textContent = `Såghöjd stöd 2: ${formatBladeHeight(h2)}`;
 
     const bigS1 = $("bigSupport1Value");
     const bigS2 = $("bigSupport2Value");
@@ -134,7 +155,17 @@
   }
 
   function renderReadouts(context) {
-    if (!context) return false;
+    if (!context || !hasMinimumLogInput()) {
+      const length = numberFromInput("logLength");
+      const bigStep = $("bigStep");
+      const bigRotation = $("bigRotation");
+      const bigReference = $("bigReference");
+      if (bigStep) bigStep.textContent = "Ingen komplett sågplan";
+      if (bigRotation) bigRotation.textContent = "Ange stöd 1, stöd 2 och längd.";
+      if (bigReference) bigReference.textContent = length ? `Längd ${formatCm(length)}` : "";
+      clearSupportHeightReadouts();
+      return true;
+    }
 
     const step = context.step;
     const index = (context.stepIndex || 0) + 1;
@@ -149,10 +180,7 @@
       if (bigStep) bigStep.textContent = "Ingen sågplan";
       if (bigRotation) bigRotation.textContent = "Ange stöd 1, stöd 2 och längd.";
       if (bigReference) bigReference.textContent = length ? `Längd ${formatCm(length)}` : "";
-      const bigS1 = $("bigSupport1Value");
-      const bigS2 = $("bigSupport2Value");
-      if (bigS1) bigS1.textContent = "–";
-      if (bigS2) bigS2.textContent = "–";
+      clearSupportHeightReadouts();
       return true;
     }
 
@@ -175,13 +203,6 @@
     renderReadouts(activeContext);
     renderMeasuredData();
     return activeContext;
-  }
-
-  function hasMinimumLogInput() {
-    const root = numberFromInput("rootDiameter");
-    const top = numberFromInput("topDiameter");
-    const length = numberFromInput("logLength");
-    return root > 0 && top > 0 && length > 0;
   }
 
   function activateWorkScreen() {
