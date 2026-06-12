@@ -3,8 +3,8 @@
 
 (function initSawVoiceInput(global) {
   const FIELD_ALIASES = [
-    { field: "rootDiameter", label: "Diameter stöd 1", patterns: [/ettan/i, /^a$/i, /\ba\s+\d/i, /stod\s*(ett|en|1)/i, /stodett/i, /stoden/i, /diameter\s*stod\s*(ett|en|1)/i] },
-    { field: "topDiameter", label: "Diameter stöd 2", patterns: [/tvaan/i, /tvåan/i, /^b$/i, /\bb\s+\d/i, /stod\s*(tva|två|2)/i, /stodtva/i, /stodtvo/i, /diameter\s*stod\s*(tva|två|2)/i] },
+    { field: "rootDiameter", label: "Diameter stöd 1", patterns: [/ettan/i, /^a$/i, /\ba\s+\d/i, /stod\s*(ett|en|1|forsta)/i, /stodett/i, /stoden/i, /diameter\s*stod\s*(ett|en|1|forsta)/i] },
+    { field: "topDiameter", label: "Diameter stöd 2", patterns: [/tvaan/i, /tvåan/i, /^b$/i, /\bb\s+\d/i, /stod\s*(tva|två|2|andra)/i, /stodtva/i, /stodtvo/i, /diameter\s*stod\s*(tva|två|2|andra)/i] },
     { field: "rootEndDiameter", label: "Rotända", patterns: [/rot(anda)?/i, /rot\s*ande/i] },
     { field: "topEndDiameter", label: "Toppända", patterns: [/topp(anda)?/i, /topp\s*ande/i] },
     { field: "logLength", label: "Stocklängd", patterns: [/langd/i, /stocklangd/i, /stock\s*langd/i] },
@@ -16,7 +16,7 @@
   const MEASURED_LOG_FIELDS = ["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter", "logLength", "sweep"];
 
   const NUMBER_WORDS = new Map([
-    ["noll", 0], ["en", 1], ["ett", 1], ["tva", 2], ["två", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
+    ["noll", 0], ["en", 1], ["ett", 1], ["forsta", 1], ["första", 1], ["tva", 2], ["två", 2], ["andra", 2], ["tre", 3], ["fyra", 4], ["fem", 5],
     ["sex", 6], ["sju", 7], ["atta", 8], ["åtta", 8], ["nio", 9], ["tio", 10], ["elva", 11], ["tolv", 12],
     ["tretton", 13], ["fjorton", 14], ["femton", 15], ["sexton", 16], ["sjutton", 17], ["arton", 18],
     ["nitton", 19], ["tjugo", 20], ["trettio", 30], ["fyrtio", 40], ["femtio", 50], ["sextio", 60],
@@ -69,8 +69,8 @@
     const words = text.split(/\s+/).filter(Boolean);
     const fieldIndex = words.findIndex((word, index) => {
       if (fieldId === "logLength") return /^(langd|stocklangd)$/.test(word) || (word === "stock" && words[index + 1] === "langd");
-      if (fieldId === "rootDiameter") return /^(ettan|a)$/.test(word) || /^stod(ett|en|1)?$/.test(word) || (word === "stod" && /^(ett|en|1)$/.test(words[index + 1] || ""));
-      if (fieldId === "topDiameter") return /^(tvaan|tvåan|b)$/.test(word) || /^stod(tva|2|tvo)?$/.test(word) || (word === "stod" && /^(tva|2|tvo)$/.test(words[index + 1] || ""));
+      if (fieldId === "rootDiameter") return /^(ettan|a)$/.test(word) || /^stod(ett|en|1|forsta)?$/.test(word) || (word === "stod" && /^(ett|en|1|forsta)$/.test(words[index + 1] || ""));
+      if (fieldId === "topDiameter") return /^(tvaan|tvåan|b)$/.test(word) || /^stod(tva|2|tvo|andra)?$/.test(word) || (word === "stod" && /^(tva|2|tvo|andra)$/.test(words[index + 1] || ""));
       if (fieldId === "rootEndDiameter") return /^rot/.test(word);
       if (fieldId === "topEndDiameter") return /^topp/.test(word);
       if (fieldId === "sweep") return /^(krokighet|krok|snoravvikelse|avvikelse)$/.test(word);
@@ -110,11 +110,11 @@
 
   function extractNumber(text, fieldId) {
     const digitMatches = [...text.matchAll(/-?\d+(?:[\.,]\d+)?/g)].map((match) => Number(match[0].replace(",", ".")));
+    const relevantTokens = tokensAfterField(text, fieldId);
+    const wordNumber = parseSwedishNumberWords(relevantTokens);
 
     if (fieldId === "logLength") {
-      const relevantTokens = tokensAfterField(text, fieldId);
       const spoken = parseSpokenNumberTokens(relevantTokens);
-      const wordNumber = parseSwedishNumberWords(relevantTokens);
       if (relevantTokens.some((token) => MAGNITUDE_WORDS.has(token)) && wordNumber !== null) return wordNumber;
       if (digitMatches.length >= 2 && digitMatches[0] >= 1 && digitMatches[0] <= 9 && digitMatches[1] >= 0 && digitMatches[1] < 100) return digitMatches[0] * 100 + digitMatches[1];
       if (spoken !== null) return spoken;
@@ -122,12 +122,7 @@
     }
 
     if (digitMatches.length) return digitMatches[digitMatches.length - 1];
-
-    const words = text.split(/\s+/);
-    for (let i = words.length - 1; i >= 0; i -= 1) {
-      const value = parseNumberToken(words[i]);
-      if (value !== null) return value;
-    }
+    if (wordNumber !== null) return wordNumber;
     return null;
   }
 
@@ -247,7 +242,7 @@
 
     let field = findField(text);
     const number = field ? extractNumber(text, field.field) : extractNumber(text, lastField);
-    if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
+    if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio|tjugo|trettio|fyrtio|femtio|sextio|sjuttio|attio|nittio)/.test(text)) field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
     if (!field || number === null || Number.isNaN(number)) return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
 
     const measurement = measurementToMillimeters(field.field, number, text);
@@ -392,20 +387,48 @@
     button.classList.toggle("voiceListening", listening);
   }
 
+  function isMediaKeyEvent(event) {
+    return event && (
+      event.key === "MediaPlayPause" ||
+      event.code === "MediaPlayPause" ||
+      event.keyCode === 179 ||
+      event.which === 179
+    );
+  }
+
+  function runMediaToggle(event) {
+    const now = Date.now();
+    if (event && event.repeat && now - lastMediaToggleAt < 700) return;
+    if (now - lastMediaToggleAt < 450) return;
+    lastMediaToggleAt = now;
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    toggleListening();
+  }
+
+  function installMediaSessionHandlers() {
+    if (!global.navigator || !global.navigator.mediaSession || typeof global.navigator.mediaSession.setActionHandler !== "function") return;
+    ["play", "pause"].forEach((action) => {
+      try {
+        global.navigator.mediaSession.setActionHandler(action, () => runMediaToggle());
+      } catch (error) {}
+    });
+  }
+
   function installMediaKeyToggle() {
     if (mediaKeyInstalled) return;
     mediaKeyInstalled = true;
 
-    global.addEventListener("keydown", (event) => {
-      if (event.key !== "MediaPlayPause") return;
-      const now = Date.now();
-      if (event.repeat && now - lastMediaToggleAt < 700) return;
-      if (now - lastMediaToggleAt < 450) return;
-      lastMediaToggleAt = now;
-      event.preventDefault();
-      event.stopPropagation();
-      toggleListening();
-    }, true);
+    const handler = (event) => {
+      if (!isMediaKeyEvent(event)) return;
+      runMediaToggle(event);
+    };
+
+    global.addEventListener("keydown", handler, true);
+    global.addEventListener("keyup", handler, true);
+    installMediaSessionHandlers();
   }
 
   function installVoiceInput() {
