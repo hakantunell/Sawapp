@@ -46,7 +46,7 @@ function resetStepAndUpdate() {
   update();
 }
 
-for (const id of ["rootDiameter","topDiameter","rootEndDiameter","topEndDiameter","logLength","sweep","supportDistance","bark","kerf","margin","cornerWane","profileRadius","rotationPreset","manualRotation","optimizationMode","bladeHeightUnit","bladeHeightInchResolution"]) {
+for (const id of ["rootDiameter","topDiameter","rootEndDiameter","topEndDiameter","logLength","sweep","supportDistance","bladeHeightDisplay","bark","kerf","margin","cornerWane","profileRadius","rotationPreset","manualRotation","optimizationMode"]) {
   const el = $(id);
   if (!el) continue;
   el.addEventListener("input", resetStepAndUpdate);
