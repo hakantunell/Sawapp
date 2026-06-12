@@ -7,6 +7,67 @@
     return Number.isFinite(pct) && pct > 0 ? Math.max(1, Math.min(100, pct)) : 100;
   }
 
+  function installStyles() {
+    if (document.getElementById("dimension-length-requirement-style")) return;
+    const style = document.createElement("style");
+    style.id = "dimension-length-requirement-style";
+    style.textContent = `
+      #dimensionsTab .widePanel {
+        max-height: calc(100vh - 88px);
+        overflow: auto;
+      }
+
+      #dimensionsTab .dimensionHeader,
+      #dimensionsTab .dimension-row-v22 {
+        grid-template-columns: 28px 30px 30px 42px 120px 110px 120px 84px 94px 110px minmax(130px, 1fr) !important;
+        align-items: center;
+      }
+
+      #dimensionsTab .dimensionHeader span[data-length-header] {
+        display: block;
+      }
+
+      #dimensionsTab .dim-length-pct {
+        width: 100%;
+        min-width: 72px;
+        padding: 7px;
+      }
+
+      #dimensionsTab .dimension-row-v22 .area {
+        text-align: left;
+        white-space: normal;
+        line-height: 1.25;
+      }
+
+      @media (max-width: 1050px) {
+        #dimensionsTab .dimensionHeader {
+          display: none;
+        }
+        #dimensionsTab .dimension-row-v22 {
+          grid-template-columns: 34px 34px 34px 42px 1fr 1fr !important;
+        }
+        #dimensionsTab .dimension-row-v22 .dim-wane,
+        #dimensionsTab .dimension-row-v22 .dim-length-pct,
+        #dimensionsTab .dimension-row-v22 .area,
+        #dimensionsTab .dimension-row-v22 .wild-label {
+          grid-column: 1 / -1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureHeader() {
+    const header = document.querySelector("#dimensionsTab .dimensionHeader");
+    if (!header || header.querySelector("span[data-length-header]")) return;
+    const resultHeader = Array.from(header.children).find((el) => el.textContent.trim() === "Resultat");
+    const lengthHeader = document.createElement("span");
+    lengthHeader.textContent = "Längdkrav %";
+    lengthHeader.dataset.lengthHeader = "true";
+    if (resultHeader) header.insertBefore(lengthHeader, resultHeader);
+    else header.appendChild(lengthHeader);
+  }
+
   if (typeof global.renderDimensionsEditor !== "function") return;
   if (global.renderDimensionsEditor.__lengthRequirementPatched) return;
 
@@ -14,7 +75,10 @@
 
   global.renderDimensionsEditor = function renderDimensionsEditorWithLengthRequirement(options) {
     const opts = options || {};
+    installStyles();
     const result = originalRender.call(global, opts);
+    ensureHeader();
+
     const dimensions = Array.isArray(opts.dimensions) ? opts.dimensions : [];
     const list = opts.container || (global.$ ? global.$("dimensionList") : document.getElementById("dimensionList"));
     const onChange = typeof opts.onChange === "function" ? opts.onChange : function noop() {};
@@ -42,8 +106,9 @@
       if (wildLabel) row.insertBefore(input, wildLabel);
       else row.appendChild(input);
 
-      if (summary && !summary.textContent.includes("% längd")) {
-        summary.textContent = `${summary.textContent} · ${lengthPct(dimension)} % längd`;
+      if (summary) {
+        const base = summary.textContent.replace(/\s*·\s*\d+\s*%\s*längd\s*$/, "");
+        summary.textContent = `${base} · ${lengthPct(dimension)} % längd`;
       }
     });
 
