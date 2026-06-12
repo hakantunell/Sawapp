@@ -35,6 +35,8 @@
   let lastField = null;
   let audioContext = null;
   let voiceInstalled = false;
+  let mediaKeyInstalled = false;
+  let lastMediaToggleAt = 0;
 
   function recognitionCtor() {
     return global.SpeechRecognition || global.webkitSpeechRecognition || null;
@@ -102,9 +104,7 @@
   function parseSpokenNumberTokens(tokens) {
     const values = tokens.map(parseNumberToken).filter((value) => value !== null && !Number.isNaN(value));
     if (!values.length) return null;
-    if (values.length >= 2 && values[0] >= 1 && values[0] <= 9 && values[1] >= 0 && values[1] < 100) {
-      return values[0] * 100 + values[1];
-    }
+    if (values.length >= 2 && values[0] >= 1 && values[0] <= 9 && values[1] >= 0 && values[1] < 100) return values[0] * 100 + values[1];
     return values.length === 1 ? values[0] : values[values.length - 1];
   }
 
@@ -247,9 +247,7 @@
 
     let field = findField(text);
     const number = field ? extractNumber(text, field.field) : extractNumber(text, lastField);
-    if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) {
-      field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
-    }
+    if (!field && lastField && number !== null && /^(\d|noll|en|ett|tva|tre|fyra|fem|sex|sju|atta|nio|tio)/.test(text)) field = FIELD_ALIASES.find((item) => item.field === lastField) || null;
     if (!field || number === null || Number.isNaN(number)) return { ok: false, text, reason: "Kunde inte hitta både fält och värde." };
 
     const measurement = measurementToMillimeters(field.field, number, text);
@@ -394,6 +392,22 @@
     button.classList.toggle("voiceListening", listening);
   }
 
+  function installMediaKeyToggle() {
+    if (mediaKeyInstalled) return;
+    mediaKeyInstalled = true;
+
+    global.addEventListener("keydown", (event) => {
+      if (event.key !== "MediaPlayPause") return;
+      const now = Date.now();
+      if (event.repeat && now - lastMediaToggleAt < 700) return;
+      if (now - lastMediaToggleAt < 450) return;
+      lastMediaToggleAt = now;
+      event.preventDefault();
+      event.stopPropagation();
+      toggleListening();
+    }, true);
+  }
+
   function installVoiceInput() {
     let panel = getInput("voiceInputPanel");
     if (!panel) {
@@ -414,6 +428,7 @@
       button.addEventListener("click", toggleListening);
       voiceInstalled = true;
     }
+    installMediaKeyToggle();
     if (!supportsSpeechRecognition()) {
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
       if (button) button.disabled = true;
