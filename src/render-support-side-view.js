@@ -4,9 +4,10 @@
 // Passiv modul tills den anropas från update-render-extract-adapter.
 
 (function initSawRenderSupportSideView(global) {
-  function formatInches(mm) {
-    if (typeof global.fmtIn === "function") return global.fmtIn(mm);
-    return `${(Number(mm || 0) / 25.4).toFixed(2)}\"`;
+  function formatHeight(mm) {
+    if (typeof global.formatBladeHeight === "function") return global.formatBladeHeight(mm);
+    if (global.SawFormat && typeof global.SawFormat.formatBladeHeight === "function") return global.SawFormat.formatBladeHeight(mm);
+    return `${Number(mm || 0).toFixed(0)} mm`;
   }
 
   function renderSupportSideViewFromModel(model) {
@@ -23,8 +24,8 @@
     const h1 = step.rootSupportHeight ?? step.bladeToBed ?? 0;
     const h2 = step.topSupportHeight ?? step.bladeToBed ?? 0;
 
-    s1.textContent = `Stöd 1: ${h1.toFixed(0)} mm / ${formatInches(h1)}`;
-    s2.textContent = `Stöd 2: ${h2.toFixed(0)} mm / ${formatInches(h2)}`;
+    s1.textContent = `Stöd 1: ${formatHeight(h1)}`;
+    s2.textContent = `Stöd 2: ${formatHeight(h2)}`;
 
     const log = view.querySelector(".logSide");
     if (log && geom) {
