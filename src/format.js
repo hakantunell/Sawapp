@@ -51,18 +51,19 @@
     return `${sign}${whole} ${numerator}/${reducedDenominator}″`;
   }
 
-  function bladeHeightUnit() {
-    return selectedValue("bladeHeightUnit", "mm");
+  function bladeHeightDisplay() {
+    return selectedValue("bladeHeightDisplay", "mm");
   }
 
   function bladeHeightInchResolution() {
-    return Number(selectedValue("bladeHeightInchResolution", "16")) || 16;
+    const match = /^inch-(8|16|32)$/.exec(bladeHeightDisplay());
+    return match ? Number(match[1]) : 16;
   }
 
   function formatBladeHeight(mm) {
     const number = Number(mm);
     if (!Number.isFinite(number)) return "–";
-    if (bladeHeightUnit() === "inch") {
+    if (bladeHeightDisplay().startsWith("inch-")) {
       return formatFractionalInches(number, bladeHeightInchResolution());
     }
     return fmtMm(number, 0);
@@ -73,7 +74,7 @@
     fmtMm,
     fmtIn,
     formatFractionalInches,
-    bladeHeightUnit,
+    bladeHeightDisplay,
     bladeHeightInchResolution,
     formatBladeHeight,
   };
