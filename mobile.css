@@ -1,0 +1,245 @@
+/* mobile.css
+   Progressiv mobil layout. Desktop-/1366-layouten ligger kvar oförändrad. */
+
+@media (max-width: 720px) {
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: #eaf2f6;
+    font-size: 16px;
+  }
+
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    padding: 9px 12px;
+    font-size: .9rem;
+    white-space: nowrap;
+  }
+
+  .navBrand {
+    display: none !important;
+  }
+
+  .tabLayout {
+    padding: 6px;
+  }
+
+  .panel,
+  .bigWorkScreen,
+  .bigWorkCanvasPanel,
+  .bigDataPanel {
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  #bigTab {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .bigWorkScreen {
+    height: auto !important;
+    overflow: visible !important;
+    border-width: 0;
+    background: transparent;
+  }
+
+  .bigWorkGrid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    height: auto !important;
+  }
+
+  .bigDataPanel {
+    order: 1;
+    gap: 8px;
+    box-shadow: none;
+  }
+
+  .bigWorkMain {
+    order: 2;
+    display: block !important;
+    height: auto !important;
+  }
+
+  .bigWorkCanvasPanel {
+    box-shadow: none;
+  }
+
+  .bigWorkCanvasPanel h2 {
+    display: none;
+  }
+
+  .bigWorkCanvasPanel canvas {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 auto;
+  }
+
+  .voicePanel-work {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .voicePanel-work .voiceToolbar {
+    margin: 0 !important;
+  }
+
+  .voicePanel-work button,
+  .bigDataPanel .bigControls button,
+  #bigProductionControls button {
+    width: 100%;
+    min-height: 46px;
+    font-size: 1rem;
+  }
+
+  .voiceStatus {
+    display: none !important;
+  }
+
+  .bigStepLabel {
+    font-size: 1.3rem !important;
+    line-height: 1.1;
+  }
+
+  .bigRotationLabel {
+    font-size: .95rem !important;
+  }
+
+  .bigReferenceReadout {
+    font-size: .85rem !important;
+  }
+
+  .bigSupportCards {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .bigSupportCard {
+    padding: 8px 6px;
+  }
+
+  .bigSupportCard strong {
+    font-size: 1.5rem !important;
+  }
+
+  .bigMeasuredData {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    overflow: visible !important;
+  }
+
+  .measureRow {
+    grid-template-columns: 1fr auto !important;
+    padding: 9px 10px;
+  }
+
+  .measureRow strong {
+    font-size: 1.15rem;
+  }
+
+  .measureRow em {
+    display: none;
+  }
+
+  .bigDataPanel .bigControls {
+    margin-top: 0 !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  #bigProductionControls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .simpleLogProfileHost,
+  .simpleLogProfileHost-big {
+    margin-top: 8px;
+  }
+
+  .simpleLogProfile {
+    min-height: 190px;
+    height: auto;
+    padding: 8px 4px 2px;
+  }
+
+  .simpleLogLegend {
+    font-size: .78rem;
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .simpleLogBox {
+    min-height: 130px;
+    margin: 6px 2px 30px;
+  }
+
+  .simpleLogPoint {
+    min-width: 58px;
+  }
+
+  .simpleLogValue {
+    font-size: .78rem;
+  }
+
+  .simpleLogLabel {
+    font-size: .66rem;
+  }
+
+  .twoCol,
+  .planGrid,
+  #settingsTab .grid2,
+  .grid2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  #planTab .panel {
+    overflow-x: auto;
+  }
+
+  #sawListTable {
+    min-width: 760px;
+  }
+
+  .dimensionHeader {
+    display: none !important;
+  }
+
+  .dimension-row-v22 {
+    grid-template-columns: 32px 32px 32px 42px 1fr 1fr !important;
+    gap: 6px;
+  }
+
+  .dimension-row-v22 .dim-wane,
+  .dimension-row-v22 .dim-length-pct,
+  .dimension-row-v22 .wild-label,
+  .dimension-row-v22 .area {
+    grid-column: 1 / -1;
+  }
+
+  footer {
+    display: none;
+  }
+}
