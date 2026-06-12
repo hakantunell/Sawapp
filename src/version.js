@@ -6,12 +6,15 @@
 // synlig versionsetikett om elementen finns.
 
 (function initSawVersion(global) {
-  const version = "1.1.0";
+  const version = "1.2.0";
   const appName = "Sawapp";
 
   function applyVersion() {
     const visible = document.querySelector(".version");
     if (visible) visible.textContent = `v${version}`;
+
+    const brandVersion = document.querySelector(".navBrand span");
+    if (brandVersion) brandVersion.textContent = `v${version}`;
 
     if (document.title) {
       document.title = `${appName} v${version}`;
