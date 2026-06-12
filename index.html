@@ -24,26 +24,15 @@
 <div class="dimensionHeader"><span>Prio</span><span></span><span></span><span>Aktiv</span><span>Typ</span><span>Tjocklek/Höjd</span><span>Bredd/Minbredd</span><span>Vankant</span><span>Vildmark</span><span>Resultat</span></div>
 <div id="dimensionList"></div><div class="toolbar"><button id="addDimension" class="secondary">Lägg till dimension</button><button id="presetTimber" class="secondary">Timmerhus 190/170 + plank/panel</button></div>
 </section></section>
-<section id="planTab" class="tabPage"><div class="twoCol planGrid"><section class="panel"><h2>Sågbild</h2><canvas id="sawCanvas" width="780" height="620"></canvas><div class="legend"><span><i class="bark"></i>Bark</span><span><i class="chain"></i>Svärd/kedja</span><span><i class="bed"></i>Bädd/stockstöd</span><span><i class="block"></i>Block</span></div></section>
-<section class="panel"><h2>Sågordning</h2><div id="sawOrder"></div><h2>Sidoutbyte</h2><div id="sideYield"></div>
-<h2>Sågvy – stöd 1 / stöd 2</h2>
-<div id="supportSideView" class="supportSideView"><div class="sawHead">Sågaggregat</div><div class="supportDiagram"><div class="bladeLine"></div><div class="logSide"></div><div class="support support1"></div><div class="support support2"></div><div id="support1Label" class="supportLabel support1Label">Stöd 1: –</div><div id="support2Label" class="supportLabel support2Label">Stöd 2: –</div></div></div>
+<section id="planTab" class="tabPage"><div class="twoCol planGrid"><section class="panel"><h2>Sågbild</h2><canvas id="sawCanvas" width="780" height="620"></canvas><div class="legend"><span><i class="bark"></i>Bark</span><span><i class="chain"></i>Svärd/kedja</span><span><i class="bed"></i>Bädd/stockstöd</span><span><i class="block"></i>Block</span></div><h2>Stockprofil</h2><div id="planLogProfile" class="simpleLogProfileHost"></div></section>
+<section class="panel"><h2>Sågordning</h2><div id="sawOrder"></div><h2>Sågat hittills</h2><div id="sideYield"></div>
 <h2>Sågplan / såglista</h2><div class="toolbar"><button id="printSawList">Skriv ut</button><button id="copySawList">Kopiera såglista</button></div><table id="sawListTable"><thead><tr><th>Steg</th><th>Rotation</th><th>Snitt</th><th>Referens</th><th>Stöd 1</th><th>Stöd 2</th><th>Tum stöd 1/2</th><th>Kommentar</th></tr></thead><tbody></tbody></table></section>
 </div></section>
 <section id="bigTab" class="tabPage active">
 <section class="bigWorkScreen">
 <div class="bigWorkGrid">
 <section class="bigWorkMain">
-<section class="bigWorkCanvasPanel"><h2>Sågbild</h2><canvas id="bigSawCanvas" width="780" height="620"></canvas></section>
-<section class="bigWorkSidePanel"><h2>Sågvy</h2>
-<div id="bigSupportSideView" class="sawRigView">
-<img class="sawRigImage" src="assets/logosol-saw.png" alt="Sågaggregat">
-<div class="logSide"></div>
-<div id="bigSupport1Label" class="supportLabel support1Label">Stöd 1: –</div>
-<div id="bigSupport2Label" class="supportLabel support2Label">Stöd 2: –</div>
-<div id="bigLogLengthLabel" class="logLengthLabel">Längd: –</div>
-</div>
-</section>
+<section class="bigWorkCanvasPanel"><h2>Sågbild</h2><canvas id="bigSawCanvas" width="780" height="620"></canvas><div id="bigLogProfile" class="simpleLogProfileHost simpleLogProfileHost-big"></div></section>
 </section>
 <aside class="bigDataPanel">
 <div id="voiceInputPanel" class="voicePanel voicePanel-work"><div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div></div>
