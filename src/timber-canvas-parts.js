@@ -14,7 +14,16 @@
     return { canvas, ctx, W, H };
   }
 
-  function buildTimberCanvasLayout(block, geom, v, sawList) {
+  function packingSupportBottomLocal(packingLayout, sawList, stepIndex, rotationValue) {
+    if (!packingLayout || !packingLayout.length) return null;
+    if (typeof global.remainingPackingBoundsWithSlabCuts === "function") {
+      const bottom = global.remainingPackingBoundsWithSlabCuts(packingLayout, sawList, stepIndex, rotationValue || 0);
+      return Number.isFinite(bottom) ? bottom : null;
+    }
+    return null;
+  }
+
+  function buildTimberCanvasLayout(block, geom, v, sawList, packingLayout) {
     const canvasState = canvasContext("sawCanvas");
     if (!canvasState || !geom) return null;
 
@@ -41,11 +50,14 @@
       : [];
 
     const bedY = outerR;
+    const packingBottom = packingSupportBottomLocal(packingLayout, sawList, stepIndex, rotationValue);
     const supportOnBlockFace = typeof global.shouldSupportOnBlockFace === "function" &&
       global.shouldSupportOnBlockFace(block, sawList, stepIndex, rotationValue);
-    const bottomLocal = supportOnBlockFace && typeof global.blockBottomAfterRotation === "function"
-      ? global.blockBottomAfterRotation(block, rotationValue) * scale
-      : global.retainedShapeBottomAfterRotation(outerR, rotationValue, planes, scale);
+    const bottomLocal = Number.isFinite(packingBottom)
+      ? packingBottom * scale
+      : supportOnBlockFace && typeof global.blockBottomAfterRotation === "function"
+        ? global.blockBottomAfterRotation(block, rotationValue) * scale
+        : global.retainedShapeBottomAfterRotation(outerR, rotationValue, planes, scale);
     const yShift = bedY - bottomLocal;
 
     return {
@@ -67,50 +79,9 @@
       planes,
       bedY,
       yShift,
+      packingLayout,
+      packingBottomLocal: packingBottom,
     };
-  }
-
-  function drawTimberPhysicalBody(layout, block, v, packingLayout) {
-    const { ctx, outerR, usableR, barkPx, scale, planes } = layout;
-
-    ctx.save();
-    ctx.translate(0, layout.yShift);
-    ctx.rotate(layout.theta);
-
-    ctx.save();
-    global.applyCompletedCutClip(ctx, planes, outerR, scale);
-    ctx.fillStyle = "#fff7ed";
-    ctx.beginPath();
-    ctx.arc(0, 0, outerR, 0, Math.PI * 2);
-    ctx.fill();
-    global.drawBarkRing(ctx, outerR, barkPx);
-    ctx.restore();
-
-    drawCurrentCutVisualization(layout, block, packingLayout);
-    global.drawCompletedCutLines(ctx, planes, outerR, scale);
-
-    ctx.strokeStyle = "#60a5fa";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath();
-    ctx.arc(0, 0, usableR, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.strokeStyle = "#94a3b8";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath();
-    ctx.moveTo(-outerR, 0);
-    ctx.lineTo(outerR, 0);
-    ctx.moveTo(0, -outerR);
-    ctx.lineTo(0, outerR);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    drawTimberPackingOrBlock(ctx, block, scale, packingLayout, layout.step);
-
-    ctx.restore();
   }
 
   function currentCutBoundaryForStep(step, block) {
@@ -138,6 +109,18 @@
     return null;
   }
 
+  function localBladeY(layout) {
+    const boundary = currentCutBoundaryForStep(layout.step, null);
+    if (boundary) return boundary.value * layout.scale;
+    const step = layout.step;
+    if (!step) return 0;
+    return (layout.bedY - (step.supportHeightAverage ?? step.bladeToBed) * layout.scale) - layout.yShift;
+  }
+
+  function globalBladeY(layout) {
+    return layout.yShift + localBladeY(layout);
+  }
+
   function drawRemovedSideFromBoundary(ctx, boundary, R, scale, fillStyle) {
     if (!boundary) return;
     const margin = 90;
@@ -147,21 +130,15 @@
     ctx.beginPath();
     ctx.arc(0, 0, R, 0, Math.PI * 2);
     ctx.clip();
-
     ctx.fillStyle = fillStyle || "rgba(239, 68, 68, .16)";
     ctx.strokeStyle = "rgba(239, 68, 68, .28)";
     ctx.lineWidth = 1;
     ctx.beginPath();
 
-    if (boundary.axis === "y" && boundary.op === ">=") {
-      ctx.rect(-R - margin, -R - margin, 2 * (R + margin), v + R + margin);
-    } else if (boundary.axis === "y" && boundary.op === "<=") {
-      ctx.rect(-R - margin, v, 2 * (R + margin), R + margin - v);
-    } else if (boundary.axis === "x" && boundary.op === ">=") {
-      ctx.rect(-R - margin, -R - margin, v + R + margin, 2 * (R + margin));
-    } else if (boundary.axis === "x" && boundary.op === "<=") {
-      ctx.rect(v, -R - margin, R + margin - v, 2 * (R + margin));
-    }
+    if (boundary.axis === "y" && boundary.op === ">=") ctx.rect(-R - margin, -R - margin, 2 * (R + margin), v + R + margin);
+    else if (boundary.axis === "y" && boundary.op === "<=") ctx.rect(-R - margin, v, 2 * (R + margin), R + margin - v);
+    else if (boundary.axis === "x" && boundary.op === ">=") ctx.rect(-R - margin, -R - margin, v + R + margin, 2 * (R + margin));
+    else if (boundary.axis === "x" && boundary.op === "<=") ctx.rect(v, -R - margin, R + margin - v, 2 * (R + margin));
 
     ctx.fill();
     ctx.stroke();
@@ -184,13 +161,54 @@
     ctx.restore();
   }
 
-  function drawCurrentCutVisualization(layout, block, packingLayout) {
+  function drawCurrentCutVisualization(layout, block) {
     const { ctx, outerR, scale, step } = layout;
     if (!step) return;
-
     const boundary = currentCutBoundaryForStep(step, block);
     drawRemovedSideFromBoundary(ctx, boundary, outerR, scale, "rgba(239, 68, 68, .14)");
     drawCurrentPieceHighlight(ctx, step, scale);
+  }
+
+  function drawTimberPhysicalBody(layout, block, v, packingLayout) {
+    const { ctx, outerR, usableR, barkPx, scale, planes } = layout;
+
+    ctx.save();
+    ctx.translate(0, layout.yShift);
+    ctx.rotate(layout.theta);
+
+    ctx.save();
+    global.applyCompletedCutClip(ctx, planes, outerR, scale);
+    ctx.fillStyle = "#fff7ed";
+    ctx.beginPath();
+    ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+    ctx.fill();
+    global.drawBarkRing(ctx, outerR, barkPx);
+    ctx.restore();
+
+    drawCurrentCutVisualization(layout, block);
+    global.drawCompletedCutLines(ctx, planes, outerR, scale);
+
+    ctx.strokeStyle = "#60a5fa";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(0, 0, usableR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(-outerR, 0);
+    ctx.lineTo(outerR, 0);
+    ctx.moveTo(0, -outerR);
+    ctx.lineTo(0, outerR);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawTimberPackingOrBlock(ctx, block, scale, packingLayout, layout.step);
+    ctx.restore();
   }
 
   function drawTimberPackingOrBlock(ctx, block, scale, packingLayout, step) {
@@ -215,7 +233,6 @@
     }
 
     if (!block) return;
-
     const bw = block.width * scale;
     const bh = block.height * scale;
     ctx.fillStyle = "rgba(74, 222, 128, .42)";
@@ -231,7 +248,6 @@
 
   function drawTimberWaneLabel(layout, block) {
     if (!block || block.allowedWane <= 0) return;
-
     const { ctx, outerR } = layout;
     ctx.fillStyle = "#7c3aed";
     ctx.font = "13px system-ui";
@@ -241,7 +257,6 @@
 
   function drawTimberBed(layout) {
     const { ctx, outerR, bedY } = layout;
-
     ctx.strokeStyle = "#111827";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -259,7 +274,6 @@
     if (!Number.isFinite(kerfPx) || kerfPx <= 1) return;
     const left = -outerR - 65;
     const width = 2 * (outerR + 65);
-
     ctx.save();
     ctx.fillStyle = "rgba(239, 68, 68, .18)";
     ctx.fillRect(left, bladeY - kerfPx, width, kerfPx);
@@ -270,10 +284,9 @@
   }
 
   function drawTimberBladeAndSupports(layout) {
-    const { ctx, outerR, bedY, scale, step } = layout;
+    const { ctx, outerR, bedY, step } = layout;
     if (!step) return;
-
-    const bladeY = bedY - (step.supportHeightAverage ?? step.bladeToBed) * scale;
+    const bladeY = globalBladeY(layout);
 
     drawKerfBand(ctx, layout, bladeY);
 
@@ -290,39 +303,14 @@
     ctx.textAlign = "right";
     ctx.fillText(`svärd/kedja – steg ${step.step}`, outerR + 65, bladeY - 8);
 
-    drawSupportMeasure(ctx, {
-      x: -outerR - 42,
-      bladeY,
-      bedY,
-      value: step.rootSupportHeight,
-      label: "stöd 1",
-      strokeStyle: "#ef4444",
-      textAlign: "left",
-      textXOffset: 12,
-      dashed: false,
-    });
-
-    drawSupportMeasure(ctx, {
-      x: outerR + 42,
-      bladeY,
-      bedY,
-      value: step.topSupportHeight,
-      label: "stöd 2",
-      strokeStyle: "#2563eb",
-      textAlign: "right",
-      textXOffset: -10,
-      dashed: true,
-    });
+    drawSupportMeasure(ctx, { x: -outerR - 42, bladeY, bedY, value: step.rootSupportHeight, label: "stöd 1", strokeStyle: "#ef4444", textAlign: "left", textXOffset: 12, dashed: false });
+    drawSupportMeasure(ctx, { x: outerR + 42, bladeY, bedY, value: step.topSupportHeight, label: "stöd 2", strokeStyle: "#2563eb", textAlign: "right", textXOffset: -10, dashed: true });
 
     if (Math.abs(step.rootSupportHeight - step.topSupportHeight) > 0.1) {
       ctx.fillStyle = "#475569";
       ctx.font = "13px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText(
-        "Tvärsnittsbilden visar medelhöjd; ställ in rot- och stöd 2 enligt måtten.",
-        0,
-        bedY + 46
-      );
+      ctx.fillText("Tvärsnittsbilden visar medelhöjd; ställ in rot- och stöd 2 enligt måtten.", 0, bedY + 46);
     }
   }
 
@@ -330,9 +318,7 @@
     const formatHeight = typeof global.formatBladeHeightForCanvas === "function"
       ? global.formatBladeHeightForCanvas
       : (typeof global.formatBladeHeight === "function" ? global.formatBladeHeight : null);
-    const valueLabel = formatHeight
-      ? formatHeight(options.value)
-      : `${options.value.toFixed(0)} mm`;
+    const valueLabel = formatHeight ? formatHeight(options.value) : `${options.value.toFixed(0)} mm`;
 
     ctx.strokeStyle = options.strokeStyle;
     ctx.lineWidth = 2;
@@ -350,11 +336,7 @@
     ctx.fillStyle = options.strokeStyle;
     ctx.font = "bold 16px system-ui";
     ctx.textAlign = options.textAlign;
-    ctx.fillText(
-      `${options.label}: ${valueLabel}`,
-      options.x + options.textXOffset,
-      (options.bladeY + options.bedY) / 2
-    );
+    ctx.fillText(`${options.label}: ${valueLabel}`, options.x + options.textXOffset, (options.bladeY + options.bedY) / 2);
   }
 
   global.SawTimberCanvasParts = {
