@@ -1,5 +1,5 @@
 // src/work-screen.js
-// Arbetsskärm: speglar aktuell sågbild och visar sågvy/stödmått samt mätdata.
+// Arbetsskärm: speglar aktuell sågbild och visar stockprofil/stödmått samt mätdata.
 
 (function initSawWorkScreen(global) {
   function $(id) {
@@ -109,12 +109,8 @@
   }
 
   function clearSupportHeightReadouts() {
-    const s1 = $("bigSupport1Label");
-    const s2 = $("bigSupport2Label");
     const bigS1 = $("bigSupport1Value");
     const bigS2 = $("bigSupport2Value");
-    if (s1) s1.textContent = "Såghöjd stöd 1: –";
-    if (s2) s2.textContent = "Såghöjd stöd 2: –";
     if (bigS1) bigS1.textContent = "–";
     if (bigS2) bigS2.textContent = "–";
   }
@@ -132,8 +128,7 @@
     return Math.max(0, Math.min(100, (Number(point.x) || 0) / length * 100));
   }
 
-  function renderSimpleLogProfile(context) {
-    const container = $("bigSupportSideView");
+  function renderSimpleLogProfileInto(container, context) {
     if (!container) return false;
     const view = ensureSimpleLogProfileView(container);
     if (!view) return false;
@@ -193,12 +188,13 @@
     return true;
   }
 
-  function renderSupportView(context) {
-    renderSimpleLogProfile(context);
+  function renderSimpleLogProfiles(context) {
+    renderSimpleLogProfileInto($("bigLogProfile"), context);
+    renderSimpleLogProfileInto($("planLogProfile"), context);
+  }
 
-    const length = numberFromInput("logLength");
-    const lengthLabel = $("bigLogLengthLabel");
-    if (lengthLabel) lengthLabel.textContent = `Längd: ${length ? formatCm(length) : "–"}`;
+  function renderSupportView(context) {
+    renderSimpleLogProfiles(context);
 
     if (!hasMinimumLogInput() || !context || !context.step) {
       clearSupportHeightReadouts();
@@ -208,11 +204,6 @@
     const step = context.step;
     const h1 = Number.isFinite(step.rootSupportHeight) ? step.rootSupportHeight : step.bladeToBed || 0;
     const h2 = Number.isFinite(step.topSupportHeight) ? step.topSupportHeight : step.bladeToBed || 0;
-
-    const s1 = $("bigSupport1Label");
-    const s2 = $("bigSupport2Label");
-    if (s1) s1.textContent = `Såghöjd stöd 1: ${formatBladeHeight(h1)}`;
-    if (s2) s2.textContent = `Såghöjd stöd 2: ${formatBladeHeight(h2)}`;
 
     const bigS1 = $("bigSupport1Value");
     const bigS2 = $("bigSupport2Value");
@@ -247,7 +238,7 @@
 
     if (!step) {
       if (bigStep) bigStep.textContent = "Ingen sågplan";
-      if (bigRotation) bigRotation.textContent = "Ange stöd 1, stöd 2 och längd.";
+      if (bigRotation) bigRotation.textContent = "Ange längd och minst två diametermått.";
       if (bigReference) bigReference.textContent = length ? `Längd ${formatCm(length)}` : "";
       clearSupportHeightReadouts();
       return true;
