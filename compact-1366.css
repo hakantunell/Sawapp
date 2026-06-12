@@ -56,6 +56,7 @@
     border-width: 0 !important;
     border-radius: 6px !important;
     box-shadow: none !important;
+    overflow: hidden !important;
   }
 
   .bigWorkCanvasPanel h2 {
@@ -71,6 +72,11 @@
     border: 0 !important;
     border-radius: 4px !important;
     background: #f8fafc !important;
+    transform: translateY(-30px) !important;
+  }
+
+  #bigLogProfile {
+    display: none !important;
   }
 
   .bigDataPanel {
