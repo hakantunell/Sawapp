@@ -134,6 +134,22 @@
     return profileStart + pointPercent(point, length) * profileWidth / 100;
   }
 
+  function displayLabelForProfilePoint(point, points) {
+    if (!point) return "";
+    if (point.key === "support1") return "Stöd 1";
+    if (point.key === "support2") return "Stöd 2";
+
+    const leftEnd = points.find((p) => p.key === "rootEnd") || points[0];
+    const rightEnd = points.find((p) => p.key === "topEnd") || points[points.length - 1];
+    const leftValue = Number(leftEnd && leftEnd.value) || 0;
+    const rightValue = Number(rightEnd && rightEnd.value) || 0;
+    const rootIsRight = rightValue > leftValue;
+
+    if (point.key === "rootEnd") return rootIsRight ? "Toppända" : "Rotända";
+    if (point.key === "topEnd") return rootIsRight ? "Rotända" : "Toppända";
+    return point.label || "";
+  }
+
   function renderSimpleLogProfileInto(container, context) {
     if (!container) return false;
     const view = ensureSimpleLogProfileView(container);
@@ -160,30 +176,35 @@
       return false;
     }
 
-    const root = points.find((p) => p.key === "rootEnd") || points[0];
-    const top = points.find((p) => p.key === "topEnd") || points[points.length - 1];
+    const leftEnd = points.find((p) => p.key === "rootEnd") || points[0];
+    const rightEnd = points.find((p) => p.key === "topEnd") || points[points.length - 1];
     const maxD = Math.max(...points.map((p) => Number(p.value) || 0), 1);
-    const minHeight = 28;
-    const maxHeight = 92;
-    const rootHeight = minHeight + (Number(root.value) || 0) / maxD * (maxHeight - minHeight);
-    const topHeight = minHeight + (Number(top.value) || 0) / maxD * (maxHeight - minHeight);
-    const polygon = `0,${(maxHeight - rootHeight) / 2} 100,${(maxHeight - topHeight) / 2} 100,${(maxHeight + topHeight) / 2} 0,${(maxHeight + rootHeight) / 2}`;
+    const minD = Math.min(...points.map((p) => Number(p.value) || Infinity));
+    const minHeight = 34;
+    const maxHeight = 98;
+    const span = Math.max(1, maxD - minD);
+    const scaledHeight = (value) => minHeight + ((Number(value) || 0) - minD) / span * (maxHeight - minHeight);
+    const leftHeight = scaledHeight(leftEnd.value);
+    const rightHeight = scaledHeight(rightEnd.value);
+    const polygon = `0,${(maxHeight - leftHeight) / 2} 100,${(maxHeight - rightHeight) / 2} 100,${(maxHeight + rightHeight) / 2} 0,${(maxHeight + leftHeight) / 2}`;
+    const rootSide = (Number(rightEnd.value) || 0) > (Number(leftEnd.value) || 0) ? "höger" : "vänster";
 
     const pointHtml = points.map((point) => {
       const left = markerPercentOnStock(point, length);
       const marker = point.source === "measured" ? "●" : "○";
       const cls = point.source === "measured" ? "measured" : "calculated";
+      const label = displayLabelForProfilePoint(point, points);
       return `
         <div class="simpleLogPoint ${cls}" style="left:${left}%">
           <div class="simpleLogMarker">${marker}</div>
           <div class="simpleLogValue">${formatCm(point.value)}</div>
-          <div class="simpleLogLabel">${point.label}</div>
+          <div class="simpleLogLabel">${label}</div>
         </div>
       `;
     }).join("");
 
     view.innerHTML = `
-      <div class="simpleLogLegend"><span>● mätt</span><span>○ framräknad</span><span>Längd ${formatCm(length)}</span></div>
+      <div class="simpleLogLegend"><span>● mätt</span><span>○ framräknad</span><span>Längd ${formatCm(length)}</span><span>Rot åt ${rootSide}</span></div>
       <div class="simpleLogBox">
         <svg viewBox="0 0 100 ${maxHeight}" preserveAspectRatio="none" class="simpleLogSvg" aria-hidden="true">
           <polygon points="${polygon}" />
