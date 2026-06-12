@@ -17,9 +17,64 @@
     return `${mmToIn(v).toFixed(2)}"`;
   }
 
+  function selectedValue(id, fallback) {
+    const el = global.document ? global.document.getElementById(id) : null;
+    return el && el.value ? el.value : fallback;
+  }
+
+  function gcd(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y) {
+      const t = y;
+      y = x % y;
+      x = t;
+    }
+    return x || 1;
+  }
+
+  function formatFractionalInches(mm, denominator) {
+    const safeDenominator = Number(denominator) || 16;
+    const rawInches = mmToIn(mm);
+    const sign = rawInches < 0 ? "-" : "";
+    const totalFractions = Math.round(Math.abs(rawInches) * safeDenominator);
+    const whole = Math.floor(totalFractions / safeDenominator);
+    let numerator = totalFractions % safeDenominator;
+
+    if (numerator === 0) return `${sign}${whole}″`;
+
+    const divisor = gcd(numerator, safeDenominator);
+    numerator = numerator / divisor;
+    const reducedDenominator = safeDenominator / divisor;
+
+    if (whole === 0) return `${sign}${numerator}/${reducedDenominator}″`;
+    return `${sign}${whole} ${numerator}/${reducedDenominator}″`;
+  }
+
+  function bladeHeightUnit() {
+    return selectedValue("bladeHeightUnit", "mm");
+  }
+
+  function bladeHeightInchResolution() {
+    return Number(selectedValue("bladeHeightInchResolution", "16")) || 16;
+  }
+
+  function formatBladeHeight(mm) {
+    const number = Number(mm);
+    if (!Number.isFinite(number)) return "–";
+    if (bladeHeightUnit() === "inch") {
+      return formatFractionalInches(number, bladeHeightInchResolution());
+    }
+    return fmtMm(number, 0);
+  }
+
   global.SawFormat = {
     mmToIn,
     fmtMm,
     fmtIn,
+    formatFractionalInches,
+    bladeHeightUnit,
+    bladeHeightInchResolution,
+    formatBladeHeight,
   };
 })(window);
