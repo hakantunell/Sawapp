@@ -134,12 +134,13 @@
   function bladeLocalY(planStep) {
     if (!planStep || !planStep.source) return null;
 
+    const theta = global.rotationToRadians(planStep.rotationValue || 0);
     const rb0 = global.rotatedRectBounds({
       x: planStep.source.x,
       y: planStep.source.y,
       w: planStep.source.w,
       h: planStep.source.h,
-    }, planStep.rotationValue || 0);
+    }, theta);
 
     if (planStep.kind === "slab") return { rb0, value: rb0.minY };
     if (planStep.kind === "side") return { rb0, value: rb0.maxY };
