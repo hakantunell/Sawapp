@@ -28,6 +28,7 @@
     const outerR = geom.designDiameter / 2 * scale;
     const usableR = geom.usableDiameter / 2 * scale;
     const barkPx = v.bark * scale;
+    const kerfPx = Math.max(1, (Number(v.kerf) || 0) * scale);
 
     const stepIndex = global.SawState && typeof global.SawState.getCurrentStepIndex === "function"
       ? global.SawState.getCurrentStepIndex()
@@ -58,6 +59,7 @@
       outerR,
       usableR,
       barkPx,
+      kerfPx,
       stepIndex,
       step,
       rotationValue,
@@ -84,6 +86,7 @@
     global.drawBarkRing(ctx, outerR, barkPx);
     ctx.restore();
 
+    drawCurrentCutVisualization(layout, block, packingLayout);
     global.drawCompletedCutLines(ctx, planes, outerR, scale);
 
     ctx.strokeStyle = "#60a5fa";
@@ -105,17 +108,102 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    drawTimberPackingOrBlock(ctx, block, scale, packingLayout);
+    drawTimberPackingOrBlock(ctx, block, scale, packingLayout, layout.step);
 
     ctx.restore();
   }
 
-  function drawTimberPackingOrBlock(ctx, block, scale, packingLayout) {
+  function currentCutBoundaryForStep(step, block) {
+    if (!step) return null;
+
+    if (step.source && typeof global.slabCutBoundaryForStep === "function") {
+      const boundary = global.slabCutBoundaryForStep(step);
+      if (boundary) return boundary;
+    }
+
+    if (step.source && (step.kind === "side" || step.kind === "slab")) {
+      const r = step.source;
+      const phase = step.cutPhase || (step.kind === "slab" ? "outer" : "inner");
+      if (step.side === "top") return { axis: "y", op: ">=", value: phase === "outer" ? r.y : r.y + r.h };
+      if (step.side === "bottom") return { axis: "y", op: "<=", value: phase === "outer" ? r.y + r.h : r.y };
+      if (step.side === "right") return { axis: "x", op: "<=", value: phase === "outer" ? r.x + r.w : r.x };
+      if (step.side === "left") return { axis: "x", op: ">=", value: phase === "outer" ? r.x : r.x + r.w };
+    }
+
+    if (!block) return null;
+    if (step.side === "top") return { axis: "y", op: ">=", value: -block.height / 2 };
+    if (step.side === "bottom") return { axis: "y", op: "<=", value: block.height / 2 };
+    if (step.side === "right") return { axis: "x", op: "<=", value: block.width / 2 };
+    if (step.side === "left") return { axis: "x", op: ">=", value: -block.width / 2 };
+    return null;
+  }
+
+  function drawRemovedSideFromBoundary(ctx, boundary, R, scale, fillStyle) {
+    if (!boundary) return;
+    const margin = 90;
+    const v = boundary.value * scale;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = fillStyle || "rgba(239, 68, 68, .16)";
+    ctx.strokeStyle = "rgba(239, 68, 68, .28)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    if (boundary.axis === "y" && boundary.op === ">=") {
+      ctx.rect(-R - margin, -R - margin, 2 * (R + margin), v + R + margin);
+    } else if (boundary.axis === "y" && boundary.op === "<=") {
+      ctx.rect(-R - margin, v, 2 * (R + margin), R + margin - v);
+    } else if (boundary.axis === "x" && boundary.op === ">=") {
+      ctx.rect(-R - margin, -R - margin, v + R + margin, 2 * (R + margin));
+    } else if (boundary.axis === "x" && boundary.op === "<=") {
+      ctx.rect(v, -R - margin, R + margin - v, 2 * (R + margin));
+    }
+
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawCurrentPieceHighlight(ctx, step, scale) {
+    if (!step || step.kind !== "side" || !step.source) return;
+    const r = step.source;
+    ctx.save();
+    ctx.fillStyle = "rgba(250, 204, 21, .38)";
+    ctx.strokeStyle = "#ca8a04";
+    ctx.lineWidth = 3;
+    ctx.fillRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
+    ctx.strokeRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
+    ctx.fillStyle = "#713f12";
+    ctx.font = "bold 14px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText("frigörs nu", (r.x + r.w / 2) * scale, (r.y + r.h / 2) * scale + 5);
+    ctx.restore();
+  }
+
+  function drawCurrentCutVisualization(layout, block, packingLayout) {
+    const { ctx, outerR, scale, step } = layout;
+    if (!step) return;
+
+    const boundary = currentCutBoundaryForStep(step, block);
+    drawRemovedSideFromBoundary(ctx, boundary, outerR, scale, "rgba(239, 68, 68, .14)");
+    drawCurrentPieceHighlight(ctx, step, scale);
+  }
+
+  function drawTimberPackingOrBlock(ctx, block, scale, packingLayout, step) {
     if (packingLayout && packingLayout.length) {
       packingLayout.forEach((r, idx) => {
-        ctx.fillStyle = r.type === "center" ? "rgba(74, 222, 128, .42)" : (r.wildEdge ? "rgba(250, 204, 21, .45)" : "rgba(96, 165, 250, .35)");
-        ctx.strokeStyle = r.type === "center" ? "#16a34a" : (r.wildEdge ? "#ca8a04" : "#2563eb");
-        ctx.lineWidth = r.type === "center" ? 3 : 2;
+        const isCurrentSidePiece = step && step.kind === "side" && step.source === r;
+        ctx.fillStyle = isCurrentSidePiece
+          ? "rgba(250, 204, 21, .46)"
+          : r.type === "center" ? "rgba(74, 222, 128, .42)" : (r.wildEdge ? "rgba(250, 204, 21, .45)" : "rgba(96, 165, 250, .35)");
+        ctx.strokeStyle = isCurrentSidePiece
+          ? "#ca8a04"
+          : r.type === "center" ? "#16a34a" : (r.wildEdge ? "#ca8a04" : "#2563eb");
+        ctx.lineWidth = isCurrentSidePiece ? 4 : (r.type === "center" ? 3 : 2);
         ctx.fillRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
         ctx.strokeRect(r.x * scale, r.y * scale, r.w * scale, r.h * scale);
         ctx.fillStyle = "#0f172a";
@@ -166,11 +254,28 @@
     ctx.fillText("bädd / stockstöd", -outerR - 65, bedY + 22);
   }
 
+  function drawKerfBand(ctx, layout, bladeY) {
+    const { outerR, kerfPx } = layout;
+    if (!Number.isFinite(kerfPx) || kerfPx <= 1) return;
+    const left = -outerR - 65;
+    const width = 2 * (outerR + 65);
+
+    ctx.save();
+    ctx.fillStyle = "rgba(239, 68, 68, .18)";
+    ctx.fillRect(left, bladeY - kerfPx, width, kerfPx);
+    ctx.strokeStyle = "rgba(239, 68, 68, .35)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(left, bladeY - kerfPx, width, kerfPx);
+    ctx.restore();
+  }
+
   function drawTimberBladeAndSupports(layout) {
     const { ctx, outerR, bedY, scale, step } = layout;
     if (!step) return;
 
     const bladeY = bedY - (step.supportHeightAverage ?? step.bladeToBed) * scale;
+
+    drawKerfBand(ctx, layout, bladeY);
 
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 3;
