@@ -18,6 +18,13 @@
     return Number.isFinite(number) ? `${number.toFixed(0)} mm` : "–";
   }
 
+  function formatCm(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "–";
+    const cm = number / 10;
+    return Number.isInteger(cm) ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`;
+  }
+
   function currentContext() {
     if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
       return global.SawUpdatePipeline.buildPlanContext();
@@ -68,7 +75,7 @@
     target.innerHTML = rows.map(([id, label]) => {
       const value = numberFromInput(id);
       const status = measureStatus(id, value);
-      const displayValue = value === null ? "–" : formatMm(value);
+      const displayValue = value === null ? "–" : formatCm(value);
       const note = status === "warn" ? "Kontrollera" : status === "ok" ? "OK" : "Ej angivet";
       return `
         <div class="measureRow measure-${status}">
@@ -88,7 +95,7 @@
 
     const length = numberFromInput("logLength");
     const lengthLabel = $("bigLogLengthLabel");
-    if (lengthLabel) lengthLabel.textContent = `Längd: ${length ? formatMm(length) : "–"}`;
+    if (lengthLabel) lengthLabel.textContent = `Längd: ${length ? formatCm(length) : "–"}`;
 
     if (!context || !context.step) return false;
 
@@ -133,7 +140,7 @@
     if (!step) {
       if (bigStep) bigStep.textContent = "Ingen sågplan";
       if (bigRotation) bigRotation.textContent = "Ange stöd 1, stöd 2 och längd.";
-      if (bigReference) bigReference.textContent = length ? `Längd ${formatMm(length)}` : "";
+      if (bigReference) bigReference.textContent = length ? `Längd ${formatCm(length)}` : "";
       const bigS1 = $("bigSupport1Value");
       const bigS2 = $("bigSupport2Value");
       if (bigS1) bigS1.textContent = "–";
@@ -149,7 +156,7 @@
 
     if (bigStep) bigStep.textContent = `Snitt ${index} av ${total}`;
     if (bigRotation) bigRotation.textContent = `Rotation ${step.rotation || "–"} – ${cut}`;
-    if (bigReference) bigReference.textContent = `${step.reference || step.note || ""}${length ? ` · Längd ${formatMm(length)}` : ""}`;
+    if (bigReference) bigReference.textContent = `${step.reference || step.note || ""}${length ? ` · Längd ${formatCm(length)}` : ""}`;
     return true;
   }
 
