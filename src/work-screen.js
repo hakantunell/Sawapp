@@ -51,6 +51,17 @@
     return true;
   }
 
+  function measuredDiameterCount() {
+    return ["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter"]
+      .map(numberFromInput)
+      .filter((value) => value > 0).length;
+  }
+
+  function hasMinimumLogInput() {
+    const length = numberFromInput("logLength");
+    return length > 0 && measuredDiameterCount() >= 2;
+  }
+
   function measureStatus(id, value) {
     if (value === null) return "empty";
 
@@ -97,13 +108,6 @@
     return true;
   }
 
-  function hasMinimumLogInput() {
-    const root = numberFromInput("rootDiameter");
-    const top = numberFromInput("topDiameter");
-    const length = numberFromInput("logLength");
-    return root > 0 && top > 0 && length > 0;
-  }
-
   function clearSupportHeightReadouts() {
     const s1 = $("bigSupport1Label");
     const s2 = $("bigSupport2Label");
@@ -115,9 +119,82 @@
     if (bigS2) bigS2.textContent = "–";
   }
 
+  function ensureSimpleLogProfileView(container) {
+    if (!container) return null;
+    let view = container.querySelector(".simpleLogProfile");
+    if (view) return view;
+    container.innerHTML = `<div class="simpleLogProfile"></div>`;
+    return container.querySelector(".simpleLogProfile");
+  }
+
+  function pointPercent(point, length) {
+    if (!length) return 0;
+    return Math.max(0, Math.min(100, (Number(point.x) || 0) / length * 100));
+  }
+
+  function renderSimpleLogProfile(context) {
+    const container = $("bigSupportSideView");
+    if (!container) return false;
+    const view = ensureSimpleLogProfileView(container);
+    if (!view) return false;
+
+    const length = numberFromInput("logLength") || 0;
+    const geom = context && context.geom;
+    const points = geom && Array.isArray(geom.diameterProfile) ? geom.diameterProfile : [];
+    const enoughInput = length > 0 && measuredDiameterCount() >= 2 && geom && geom.hasEnoughDiameterInput;
+
+    if (!length || measuredDiameterCount() < 2) {
+      view.innerHTML = `
+        <div class="simpleLogHint">Ange längd och minst två diametermått för att räkna fram stockprofilen.</div>
+        <div class="simpleLogBox simpleLogBox-empty"></div>
+      `;
+      return false;
+    }
+
+    if (!enoughInput || !points.length) {
+      view.innerHTML = `
+        <div class="simpleLogHint">Stockprofil saknas.</div>
+        <div class="simpleLogBox simpleLogBox-empty"></div>
+      `;
+      return false;
+    }
+
+    const root = points.find((p) => p.key === "rootEnd") || points[0];
+    const top = points.find((p) => p.key === "topEnd") || points[points.length - 1];
+    const maxD = Math.max(...points.map((p) => Number(p.value) || 0), 1);
+    const minHeight = 28;
+    const maxHeight = 92;
+    const rootHeight = minHeight + (Number(root.value) || 0) / maxD * (maxHeight - minHeight);
+    const topHeight = minHeight + (Number(top.value) || 0) / maxD * (maxHeight - minHeight);
+    const polygon = `0,${(maxHeight - rootHeight) / 2} 100,${(maxHeight - topHeight) / 2} 100,${(maxHeight + topHeight) / 2} 0,${(maxHeight + rootHeight) / 2}`;
+
+    const pointHtml = points.map((point) => {
+      const left = pointPercent(point, length);
+      const marker = point.source === "measured" ? "●" : "○";
+      const cls = point.source === "measured" ? "measured" : "calculated";
+      return `
+        <div class="simpleLogPoint ${cls}" style="left:${left}%">
+          <div class="simpleLogMarker">${marker}</div>
+          <div class="simpleLogValue">${formatCm(point.value)}</div>
+          <div class="simpleLogLabel">${point.label}</div>
+        </div>
+      `;
+    }).join("");
+
+    view.innerHTML = `
+      <div class="simpleLogLegend"><span>● mätt</span><span>○ framräknad</span><span>Längd ${formatCm(length)}</span></div>
+      <div class="simpleLogBox">
+        <svg viewBox="0 0 100 ${maxHeight}" preserveAspectRatio="none" class="simpleLogSvg" aria-hidden="true">
+          <polygon points="${polygon}" />
+        </svg>
+        ${pointHtml}
+      </div>
+    `;
+    return true;
+  }
+
   function renderSupportView(context) {
-    const bigView = $("bigSupportSideView");
-    if (!bigView) return false;
+    renderSimpleLogProfile(context);
 
     const length = numberFromInput("logLength");
     const lengthLabel = $("bigLogLengthLabel");
@@ -129,7 +206,6 @@
     }
 
     const step = context.step;
-    const geom = context.geom;
     const h1 = Number.isFinite(step.rootSupportHeight) ? step.rootSupportHeight : step.bladeToBed || 0;
     const h2 = Number.isFinite(step.topSupportHeight) ? step.topSupportHeight : step.bladeToBed || 0;
 
@@ -143,26 +219,19 @@
     if (bigS1) bigS1.textContent = formatBladeHeight(h1);
     if (bigS2) bigS2.textContent = formatBladeHeight(h2);
 
-    const log = bigView.querySelector(".logSide");
-    if (log && geom) {
-      const d1 = geom.support1Diameter || numberFromInput("rootDiameter") || 0;
-      const d2 = geom.support2Diameter || numberFromInput("topDiameter") || 0;
-      const visualHeight = Math.max(34, Math.min(92, Math.max(d1, d2) / 5));
-      log.style.setProperty("--log-height", `${visualHeight}px`);
-    }
-
     return true;
   }
 
   function renderReadouts(context) {
     if (!context || !hasMinimumLogInput()) {
       const length = numberFromInput("logLength");
+      const count = measuredDiameterCount();
       const bigStep = $("bigStep");
       const bigRotation = $("bigRotation");
       const bigReference = $("bigReference");
       if (bigStep) bigStep.textContent = "Ingen komplett sågplan";
-      if (bigRotation) bigRotation.textContent = "Ange stöd 1, stöd 2 och längd.";
-      if (bigReference) bigReference.textContent = length ? `Längd ${formatCm(length)}` : "";
+      if (bigRotation) bigRotation.textContent = "Ange längd och minst två diametermått.";
+      if (bigReference) bigReference.textContent = `${length ? `Längd ${formatCm(length)}` : "Längd saknas"} · Diametermått ${count} av 2`;
       clearSupportHeightReadouts();
       return true;
     }
