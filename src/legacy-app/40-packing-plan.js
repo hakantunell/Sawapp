@@ -110,6 +110,9 @@ function buildSawmillCutPlan(packingLayout, block, geom, v) {
         label: p.label || `${Math.round(thickness)}×${Math.round(length)}`,
         thickness,
         length,
+        // Behåll själva packningsrektangeln som källa. Tidigare användes p.source,
+        // vilket ofta är undefined. Då kunde sågbilden inte linjera svärdslinjen
+        // mot den faktiska sidobiten/slabban i packningslayouten.
         source: p,
       };
     });
