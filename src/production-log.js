@@ -157,9 +157,32 @@
     return "Aktuell bit kan godkännas först efter sista snittet.";
   }
 
+  function clearCurrentStockInputs() {
+    ["rootDiameter", "topDiameter", "rootEndDiameter", "topEndDiameter", "logLength", "sweep"].forEach((id) => {
+      const input = $(id);
+      if (!input) return;
+      input.value = "";
+      input.dispatchEvent(new global.Event("input", { bubbles: true }));
+      input.dispatchEvent(new global.Event("change", { bubbles: true }));
+    });
+  }
+
+  function startNewStockAfterDecision() {
+    lastDecidedProductKey = null;
+    clearCurrentStockInputs();
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
+      global.SawState.resetCurrentStepIndex();
+    }
+    if (typeof global.update === "function") global.update();
+    if (global.SawWorkScreen && typeof global.SawWorkScreen.renderWorkScreen === "function") {
+      global.SawWorkScreen.renderWorkScreen();
+    }
+    render();
+  }
+
   function moveToNextStepAfterDecision(context) {
     const active = context || currentContext();
-    if (!active) return false;
+    if (!active) return { moved: false, newStock: false };
 
     const currentIndex = Number(active.stepIndex || 0);
     const lastIndex = Math.max(0, Number(active.activePlanLength || 0) - 1);
@@ -168,12 +191,11 @@
         global.SawState.setCurrentStepIndex(currentIndex + 1);
       }
       if (typeof global.update === "function") global.update();
-      return true;
+      return { moved: true, newStock: false };
     }
 
-    render();
-    updateWorkScreenButtons();
-    return false;
+    startNewStockAfterDecision();
+    return { moved: false, newStock: true };
   }
 
   function addCurrentProduct(context) {
@@ -190,10 +212,10 @@
     writeEntries(entries);
     lastDecidedProductKey = key;
 
-    const moved = moveToNextStepAfterDecision(active);
-    setStatus(moved
-      ? `Godkänd: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`
-      : `Godkänd: ${product.dimension}, ${product.lengthClass}. Börja med ny stock.`);
+    const result = moveToNextStepAfterDecision(active);
+    setStatus(result.newStock
+      ? `Godkänd: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
+      : `Godkänd: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`);
     return true;
   }
 
@@ -206,10 +228,10 @@
     }
 
     lastDecidedProductKey = productKey(active, product);
-    const moved = moveToNextStepAfterDecision(active);
-    setStatus(moved
-      ? `Kasserad: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`
-      : `Kasserad: ${product.dimension}, ${product.lengthClass}. Börja med ny stock.`);
+    const result = moveToNextStepAfterDecision(active);
+    setStatus(result.newStock
+      ? `Kasserad: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
+      : `Kasserad: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`);
     return true;
   }
 
