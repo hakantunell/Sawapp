@@ -26,9 +26,19 @@
     }
   }
 
+  function hasActivePackingPlan() {
+    if (!global.SawLatestPlans || typeof global.SawLatestPlans.getPackingLayout !== "function") return false;
+    const layout = global.SawLatestPlans.getPackingLayout();
+    return Array.isArray(layout) && layout.length > 0;
+  }
+
   function clearLatestPlansForTimberMode() {
     // Timmerläge ska inte bära med sig en gammal sågverks-/packningsplan från
-    // föregående läge. SawLatestPlans kapslar både SawState och legacy-globals.
+    // föregående läge. Men i packningsläge måste packningsplanen finnas kvar
+    // tills renderTimberCanvas() har hämtat den, annars kan inte svärdslinjen
+    // linjera mot aktuell sidobit/slabba.
+    if (hasActivePackingPlan()) return;
+
     if (global.SawLatestPlans && typeof global.SawLatestPlans.clearLatestPlans === "function") {
       global.SawLatestPlans.clearLatestPlans();
       return;
