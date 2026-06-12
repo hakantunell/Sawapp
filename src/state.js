@@ -11,13 +11,13 @@
     }
 
     return [
-      { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: 0 },
-      { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: 0 },
-      { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: 0 },
-      { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: 0 },
-      { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: 0 },
-      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: 0 },
-      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: 20 },
+      { active: true, type: "fixed", width: 190, height: 190, minWidth: 190, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: true, type: "fixed", width: 170, height: 170, minWidth: 170, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: false, type: "fixed", width: 150, height: 150, minWidth: 150, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: false, type: "freeWidth", width: 0, height: 50, minWidth: 0, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: false, type: "freeWidth", width: 0, height: 30, minWidth: 0, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: false, waneMm: 0, lengthPct: 100 },
+      { active: false, type: "minWidth", width: 150, height: 30, minWidth: 150, wildEdge: true, waneMm: 20, lengthPct: 100 },
     ];
   }
 
@@ -28,8 +28,17 @@
     dimensions: defaultDimensions(),
   };
 
+  function normalizeDimension(d) {
+    const source = d || {};
+    const lengthPct = Number(source.lengthPct);
+    return {
+      ...source,
+      lengthPct: Number.isFinite(lengthPct) && lengthPct > 0 ? Math.max(1, Math.min(100, lengthPct)) : 100,
+    };
+  }
+
   function cloneDimension(d) {
-    return { ...(d || {}) };
+    return normalizeDimension(d);
   }
 
   function normalizeDimensions(nextDimensions) {
@@ -53,7 +62,7 @@
 
   function updateDimension(index, patch) {
     if (!state.dimensions[index]) return null;
-    state.dimensions[index] = { ...state.dimensions[index], ...(patch || {}) };
+    state.dimensions[index] = normalizeDimension({ ...state.dimensions[index], ...(patch || {}) });
     return state.dimensions[index];
   }
 
