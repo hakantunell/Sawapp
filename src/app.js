@@ -19,7 +19,6 @@
     "src/geometry.js",
     "src/dimensions.js",
     "src/render-sawmill-cut-plan.js",
-    "src/render-big-screen-step.js",
     "src/render-timber-saw-list.js",
     "src/render-support-side-view.js",
     "src/legacy-app/00-core.js",
@@ -71,8 +70,10 @@
     "src/local-db.js",
     "src/legacy-app/90-update.js",
     "src/dimensions-editor.js",
+    "src/dimension-length-requirement-adapter.js",
     "src/dimensions-editor-adapter.js",
     "src/dimensions-editor-activation-adapter.js",
+    "src/production-log.js",
     "src/big-step-navigation-fix.js",
     "src/voice-input.js",
     "src/voice-feedback.js"
