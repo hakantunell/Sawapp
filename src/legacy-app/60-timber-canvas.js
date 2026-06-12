@@ -3,12 +3,12 @@ function renderTimberCanvas(block, geom, v, sawList) {
     throw new Error("SawTimberCanvasParts saknas. Kontrollera laddordningen i src/app.js.");
   }
 
-  const layout = window.SawTimberCanvasParts.buildTimberCanvasLayout(block, geom, v, sawList);
-  if (!layout) return;
-
   const packingLayoutForCanvas = window.SawLatestPlans && typeof window.SawLatestPlans.getPackingLayout === "function"
     ? window.SawLatestPlans.getPackingLayout()
     : null;
+
+  const layout = window.SawTimberCanvasParts.buildTimberCanvasLayout(block, geom, v, sawList, packingLayoutForCanvas);
+  if (!layout) return;
 
   const ctx = layout.ctx;
   ctx.save();
