@@ -1,1 +1,168 @@
-@media (max-height:820px){.tabs{padding:6px 10px!important;gap:6px!important}.tab{padding:7px 12px!important;font-size:.88rem}.tabLayout{padding:8px!important}#bigTab{height:calc(100vh - 52px)!important}.bigWorkScreen{padding:6px!important}.bigWorkGrid{grid-template-columns:minmax(0,1fr) 340px!important;gap:8px!important}.bigWorkMain{grid-template-rows:58fr 42fr!important;gap:8px!important}.bigWorkCanvasPanel,.bigWorkSidePanel,.bigDataPanel{padding:6px!important}.bigWorkCanvasPanel h2,.bigWorkSidePanel h2{font-size:.86rem!important;margin:0 0 3px!important}.bigWorkCanvasPanel canvas{height:calc(100% - 22px)!important}.bigDataPanel{gap:5px!important}.voicePanel-work{padding:5px!important}.voicePanel-work button{padding:7px 9px!important;font-size:.85rem!important}.voiceStatus{font-size:.72rem!important;line-height:1.18!important;max-height:34px!important;overflow:hidden}.bigStepLabel{font-size:1.25rem!important}.bigRotationLabel{font-size:.82rem!important}.bigReferenceReadout{font-size:.74rem!important;max-height:28px!important;overflow:hidden}.bigSupportCard{padding:6px!important}.bigSupportCard strong{font-size:1.55rem!important}.bigMeasuredData{gap:4px!important}.measureRow{padding:5px 6px!important;font-size:.78rem!important;grid-template-columns:1fr auto!important}.measureRow em{display:none!important}.bigDataPanel .bigControls button{font-size:.82rem!important;padding:8px 6px!important}.sawRigView{height:calc(100% - 22px)!important;aspect-ratio:auto!important}.logLengthLabel{font-size:.74rem!important}.sawRigView .supportLabel{font-size:.72rem!important}}
+@media (max-height: 820px) {
+  body {
+    overflow: hidden;
+  }
+
+  .tabs {
+    padding: 5px 8px !important;
+    gap: 5px !important;
+  }
+
+  .tab {
+    padding: 6px 11px !important;
+    font-size: .86rem !important;
+  }
+
+  .navBrand {
+    font-size: .82rem !important;
+  }
+
+  .tabLayout {
+    padding: 6px !important;
+  }
+
+  footer {
+    display: none !important;
+  }
+
+  #bigTab {
+    height: calc(100vh - 45px) !important;
+    overflow: hidden !important;
+  }
+
+  .bigWorkScreen {
+    padding: 5px !important;
+    border-radius: 12px !important;
+  }
+
+  .bigWorkGrid {
+    grid-template-columns: minmax(0, 1fr) 310px !important;
+    gap: 7px !important;
+  }
+
+  .bigWorkMain {
+    display: block !important;
+    height: 100% !important;
+  }
+
+  .bigWorkSidePanel {
+    display: none !important;
+  }
+
+  .bigWorkCanvasPanel {
+    height: 100% !important;
+    padding: 5px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+  }
+
+  .bigWorkCanvasPanel h2 {
+    font-size: .84rem !important;
+    margin: 0 0 3px !important;
+  }
+
+  .bigWorkCanvasPanel canvas {
+    display: block !important;
+    width: auto !important;
+    height: calc(100% - 19px) !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: #f8fafc !important;
+  }
+
+  .bigDataPanel {
+    padding: 6px !important;
+    gap: 5px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+  }
+
+  .voicePanel-work {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .voicePanel-work .voiceToolbar {
+    margin: 0 !important;
+  }
+
+  .voicePanel-work button {
+    width: 100% !important;
+    padding: 8px 9px !important;
+    font-size: .86rem !important;
+  }
+
+  .voiceStatus {
+    margin-top: 3px !important;
+    font-size: .72rem !important;
+    line-height: 1.1 !important;
+    max-height: 16px !important;
+    overflow: hidden !important;
+    color: #475569 !important;
+  }
+
+  .bigStepLabel {
+    font-size: 1.18rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .bigRotationLabel {
+    font-size: .8rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .bigReferenceReadout {
+    font-size: .72rem !important;
+    min-height: 0 !important;
+    max-height: 24px !important;
+    overflow: hidden !important;
+  }
+
+  .bigSupportCards {
+    gap: 5px !important;
+  }
+
+  .bigSupportCard {
+    padding: 6px !important;
+    border-radius: 10px !important;
+  }
+
+  .bigSupportCard span {
+    font-size: .68rem !important;
+  }
+
+  .bigSupportCard strong {
+    font-size: 1.45rem !important;
+  }
+
+  .bigMeasuredData {
+    gap: 4px !important;
+  }
+
+  .measureRow {
+    padding: 5px 6px !important;
+    font-size: .78rem !important;
+    grid-template-columns: 1fr auto !important;
+    border-radius: 9px !important;
+  }
+
+  .measureRow strong {
+    font-size: .95rem !important;
+  }
+
+  .measureRow em {
+    display: none !important;
+  }
+
+  .bigDataPanel .bigControls {
+    gap: 5px !important;
+  }
+
+  .bigDataPanel .bigControls button {
+    font-size: .82rem !important;
+    padding: 8px 6px !important;
+  }
+}
