@@ -73,8 +73,7 @@
     "src/dimensions-editor-activation-adapter.js",
     "src/big-step-navigation-fix.js",
     "src/voice-input.js",
-    "src/voice-feedback.js",
-    "src/media-key-debug.js"
+    "src/voice-feedback.js"
   ];
 
   function loadScript(src) {
