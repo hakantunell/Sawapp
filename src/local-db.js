@@ -45,6 +45,11 @@
     }
   }
 
+  function normalizeLengthPct(value) {
+    const pct = Number(value);
+    return Number.isFinite(pct) && pct > 0 ? Math.max(1, Math.min(100, pct)) : 100;
+  }
+
   function normalizeDimension(d) {
     if (!d || typeof d !== "object") return null;
     return {
@@ -55,6 +60,7 @@
       minWidth: Number(d.minWidth) || 0,
       wildEdge: Boolean(d.wildEdge),
       waneMm: Number(d.waneMm) || 0,
+      lengthPct: normalizeLengthPct(d.lengthPct),
     };
   }
 
