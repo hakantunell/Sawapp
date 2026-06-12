@@ -16,6 +16,7 @@
   global.mmToIn = global.SawFormat.mmToIn;
   global.fmtMm = global.SawFormat.fmtMm;
   global.fmtIn = global.SawFormat.fmtIn;
+  global.formatBladeHeight = global.SawFormat.formatBladeHeight;
 
   if (typeof global.update === "function") {
     global.update();
