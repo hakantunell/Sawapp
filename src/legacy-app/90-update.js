@@ -46,9 +46,11 @@ function resetStepAndUpdate() {
   update();
 }
 
-for (const id of ["rootDiameter","topDiameter","rootEndDiameter","topEndDiameter","logLength","sweep","supportDistance","bark","kerf","margin","cornerWane","profileRadius","rotationPreset","manualRotation","optimizationMode"]) {
-  $(id).addEventListener("input", resetStepAndUpdate);
-  $(id).addEventListener("change", resetStepAndUpdate);
+for (const id of ["rootDiameter","topDiameter","rootEndDiameter","topEndDiameter","logLength","sweep","supportDistance","bark","kerf","margin","cornerWane","profileRadius","rotationPreset","manualRotation","optimizationMode","bladeHeightUnit","bladeHeightInchResolution"]) {
+  const el = $(id);
+  if (!el) continue;
+  el.addEventListener("input", resetStepAndUpdate);
+  el.addEventListener("change", resetStepAndUpdate);
 }
 
 $("addDimension").onclick = () => {
