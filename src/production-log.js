@@ -7,6 +7,7 @@
 
 (function initSawProductionLog(global) {
   const STORAGE_KEY = "sawapp.production.v1";
+  let lastDecidedProductKey = null;
 
   function $(id) {
     return global.document.getElementById(id);
@@ -67,6 +68,26 @@
     return Number(context.stepIndex || 0) >= Math.max(0, Number(context.activePlanLength || 0) - 1);
   }
 
+  function productKey(context, product) {
+    if (!context || !product) return "";
+    const step = context.step || {};
+    const values = context.v || context.values || {};
+    return [
+      Number(context.stepIndex || 0),
+      Number(context.activePlanLength || 0),
+      step.kind || "",
+      step.label || "",
+      step.rotation || "",
+      product.dimension,
+      product.lengthClass,
+      Math.round(Number(values.logLength) || 0),
+      Math.round(Number(values.rootDiameter) || 0),
+      Math.round(Number(values.topDiameter) || 0),
+      Math.round(Number(values.rootEndDiameter) || 0),
+      Math.round(Number(values.topEndDiameter) || 0),
+    ].join("|");
+  }
+
   function productFromSawmillStep(context) {
     const step = context && context.step;
     if (!step) return null;
@@ -114,11 +135,13 @@
     const active = context || currentContext();
     if (!active) return null;
 
-    if (Array.isArray(active.sawmillCutPlan) && active.sawmillCutPlan.length) {
-      return productFromSawmillStep(active);
-    }
+    const product = Array.isArray(active.sawmillCutPlan) && active.sawmillCutPlan.length
+      ? productFromSawmillStep(active)
+      : productFromTimberPlan(active);
 
-    return productFromTimberPlan(active);
+    if (!product) return null;
+    if (productKey(active, product) === lastDecidedProductKey) return null;
+    return product;
   }
 
   function pendingProductText(context) {
@@ -130,29 +153,63 @@
       if (active.step.kind === "slab") return "Yttersnitt/slabba räknas inte som färdig bit.";
       if (active.step.kind === "center") return "Kärnblocket kan godkännas efter sista kärnsnittet.";
     }
+    if (lastDecidedProductKey) return "Den färdiga biten är redan hanterad. Gå vidare eller börja med ny stock.";
     return "Aktuell bit kan godkännas först efter sista snittet.";
   }
 
+  function moveToNextStepAfterDecision(context) {
+    const active = context || currentContext();
+    if (!active) return false;
+
+    const currentIndex = Number(active.stepIndex || 0);
+    const lastIndex = Math.max(0, Number(active.activePlanLength || 0) - 1);
+    if (currentIndex < lastIndex) {
+      if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
+        global.SawState.setCurrentStepIndex(currentIndex + 1);
+      }
+      if (typeof global.update === "function") global.update();
+      return true;
+    }
+
+    render();
+    updateWorkScreenButtons();
+    return false;
+  }
+
   function addCurrentProduct(context) {
-    const product = currentProduct(context);
+    const active = context || currentContext();
+    const product = currentProduct(active);
     if (!product) {
-      setStatus(pendingProductText(context));
+      setStatus(pendingProductText(active));
       return false;
     }
+
+    const key = productKey(active, product);
     const entries = readEntries();
     entries.push({ ...product, addedAt: new Date().toISOString() });
     writeEntries(entries);
-    render();
-    setStatus(`Godkänd: ${product.dimension}, ${product.lengthClass}.`);
+    lastDecidedProductKey = key;
+
+    const moved = moveToNextStepAfterDecision(active);
+    setStatus(moved
+      ? `Godkänd: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`
+      : `Godkänd: ${product.dimension}, ${product.lengthClass}. Börja med ny stock.`);
     return true;
   }
 
-  function skipCurrentProduct() {
-    const product = currentProduct();
-    const statusText = product
-      ? `Kasserad: ${product.dimension}, ${product.lengthClass}. Räknades inte.`
-      : "Ingen färdig bit att kassera just nu.";
-    setStatus(statusText);
+  function skipCurrentProduct(context) {
+    const active = context || currentContext();
+    const product = currentProduct(active);
+    if (!product) {
+      setStatus("Ingen färdig bit att kassera just nu.");
+      return false;
+    }
+
+    lastDecidedProductKey = productKey(active, product);
+    const moved = moveToNextStepAfterDecision(active);
+    setStatus(moved
+      ? `Kasserad: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`
+      : `Kasserad: ${product.dimension}, ${product.lengthClass}. Börja med ny stock.`);
     return true;
   }
 
@@ -178,8 +235,8 @@
     el.innerHTML = `
       <div class="productionLog">
         <div class="productionLogToolbar">
-          <button id="productionAccept" type="button" ${product ? "" : "disabled"}>Godkänn färdig bit</button>
-          <button id="productionSkip" type="button" class="secondary" ${product ? "" : "disabled"}>Kassera</button>
+          <button id="productionAccept" type="button" ${product ? "" : "disabled"}>Godkänn + gå vidare</button>
+          <button id="productionSkip" type="button" class="secondary" ${product ? "" : "disabled"}>Kassera + gå vidare</button>
           <button id="productionClear" type="button" class="secondary">Nollställ logg</button>
         </div>
         <div id="productionLogStatus" class="hint">${product ? `Färdig bit: ${product.dimension}, ${product.lengthClass}.` : pendingProductText()}</div>
@@ -223,12 +280,13 @@
     const skip = $("bigProductionSkip");
     if (accept) {
       accept.disabled = !product;
-      accept.textContent = product ? "Godkänn" : "Vänta";
-      accept.title = product ? `Godkänn ${product.dimension}, ${product.lengthClass}` : pendingProductText();
+      accept.textContent = product ? "Godkänn + nästa" : "Vänta";
+      accept.title = product ? `Godkänn ${product.dimension}, ${product.lengthClass} och gå vidare` : pendingProductText();
     }
     if (skip) {
       skip.disabled = !product;
-      skip.title = product ? `Kassera ${product.dimension}, ${product.lengthClass}` : pendingProductText();
+      skip.textContent = product ? "Kassera + nästa" : "Kassera";
+      skip.title = product ? `Kassera ${product.dimension}, ${product.lengthClass} och gå vidare` : pendingProductText();
     }
   }
 
@@ -239,8 +297,8 @@
     controls.id = "bigProductionControls";
     controls.className = "bigProductionControls";
     controls.innerHTML = `
-      <button id="bigProductionAccept" type="button">Godkänn</button>
-      <button id="bigProductionSkip" type="button" class="secondary">Kassera</button>
+      <button id="bigProductionAccept" type="button">Godkänn + nästa</button>
+      <button id="bigProductionSkip" type="button" class="secondary">Kassera + nästa</button>
     `;
     const nav = panel.querySelector(".bigControls");
     if (nav) panel.insertBefore(controls, nav);
