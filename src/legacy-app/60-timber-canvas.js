@@ -6,8 +6,14 @@ function renderTimberCanvas(block, geom, v, sawList) {
   const packingLayoutForCanvas = window.SawLatestPlans && typeof window.SawLatestPlans.getPackingLayout === "function"
     ? window.SawLatestPlans.getPackingLayout()
     : null;
+  const sawmillCutPlanForCanvas = window.SawLatestPlans && typeof window.SawLatestPlans.getSawmillCutPlan === "function"
+    ? window.SawLatestPlans.getSawmillCutPlan()
+    : null;
+  const activePlanForCanvas = Array.isArray(packingLayoutForCanvas) && packingLayoutForCanvas.length && Array.isArray(sawmillCutPlanForCanvas) && sawmillCutPlanForCanvas.length
+    ? sawmillCutPlanForCanvas
+    : sawList;
 
-  const layout = window.SawTimberCanvasParts.buildTimberCanvasLayout(block, geom, v, sawList, packingLayoutForCanvas);
+  const layout = window.SawTimberCanvasParts.buildTimberCanvasLayout(block, geom, v, activePlanForCanvas, packingLayoutForCanvas);
   if (!layout) return;
 
   const ctx = layout.ctx;
