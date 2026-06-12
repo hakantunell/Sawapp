@@ -222,7 +222,12 @@
   }
 
   function drawSupportMeasure(ctx, options) {
-    const fmtIn = typeof global.fmtIn === "function" ? global.fmtIn : (mm) => `${(mm / 25.4).toFixed(2)}\"`;
+    const formatHeight = typeof global.formatBladeHeightForCanvas === "function"
+      ? global.formatBladeHeightForCanvas
+      : (typeof global.formatBladeHeight === "function" ? global.formatBladeHeight : null);
+    const valueLabel = formatHeight
+      ? formatHeight(options.value)
+      : `${options.value.toFixed(0)} mm`;
 
     ctx.strokeStyle = options.strokeStyle;
     ctx.lineWidth = 2;
@@ -241,7 +246,7 @@
     ctx.font = "bold 16px system-ui";
     ctx.textAlign = options.textAlign;
     ctx.fillText(
-      `${options.label}: ${options.value.toFixed(0)} mm / ${fmtIn(options.value)}`,
+      `${options.label}: ${valueLabel}`,
       options.x + options.textXOffset,
       (options.bladeY + options.bedY) / 2
     );
