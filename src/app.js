@@ -2,7 +2,7 @@
 // Bootstrap för refaktoreringen.
 
 (function bootstrapSawapp() {
-  const APP_BUILD = "1.2.3";
+  const APP_BUILD = "1.2.4";
   const scripts = [
     "src/version.js",
     "src/format.js",
@@ -32,6 +32,7 @@
     "src/legacy-app/60-timber-canvas.js",
     "src/legacy-app/70-canvas-helpers.js",
     "src/packing-canvas-parts.js",
+    "src/packing-canvas-blade-fix.js",
     "src/legacy-app/80-packing-canvas.js",
     "src/format-adapter.js",
     "src/dimension-label-adapter.js",
