@@ -134,8 +134,17 @@
   }
 
   function bladeBoundary(planStep) {
-    if (!planStep || !planStep.source || typeof global.slabCutBoundaryForStep !== "function") return null;
-    return global.slabCutBoundaryForStep(planStep);
+    if (!planStep || !planStep.source) return null;
+    const r = planStep.source;
+
+    // Svärdets röda referenslinje ska visa kanten där snittet börjar.
+    // I första slabbsnittet är det utsidan av sidobiten, inte insidan mot
+    // centrumblocket. Kerf-bandet ritas sedan inåt/nedåt från denna linje.
+    if (planStep.side === "top") return { axis: "y", value: r.y };
+    if (planStep.side === "bottom") return { axis: "y", value: r.y + r.h };
+    if (planStep.side === "right") return { axis: "x", value: r.x + r.w };
+    if (planStep.side === "left") return { axis: "x", value: r.x };
+    return null;
   }
 
   function drawLocalKerfBand(ctx, layout, boundary) {
@@ -149,8 +158,8 @@
     ctx.strokeStyle = "rgba(239, 68, 68, .35)";
     ctx.lineWidth = 1;
     if (boundary.axis === "y") {
-      ctx.fillRect(-outerR - margin, v - kerfPx, 2 * (outerR + margin), kerfPx);
-      ctx.strokeRect(-outerR - margin, v - kerfPx, 2 * (outerR + margin), kerfPx);
+      ctx.fillRect(-outerR - margin, v, 2 * (outerR + margin), kerfPx);
+      ctx.strokeRect(-outerR - margin, v, 2 * (outerR + margin), kerfPx);
     } else {
       ctx.fillRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
       ctx.strokeRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
@@ -166,9 +175,6 @@
     const margin = 65;
     const valuePx = boundary.value * scale;
 
-    // Rita svärdet i exakt samma lokala koordinatsystem som packningsbitarna och
-    // slabbsnitten. Då hamnar linjen på samma kant som senare tas bort när man
-    // trycker Nästa, i stället för att räknas om i ett separat skärmkoordinatsystem.
     ctx.save();
     ctx.translate(0, yShift);
     ctx.rotate(layout.theta);
