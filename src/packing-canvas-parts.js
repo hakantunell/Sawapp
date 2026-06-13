@@ -27,7 +27,8 @@
     );
     const outerR = geom.designDiameter / 2 * scale;
     const usableR = geom.usableDiameter / 2 * scale;
-    const kerfPx = Math.max(1, (Number(v.kerf) || 0) * scale);
+    const kerfMm = Number(v.kerf) || 0;
+    const kerfPx = Math.max(1, kerfMm * scale);
     const bedY = outerR;
 
     const stepIndex = global.SawState && typeof global.SawState.getCurrentStepIndex === "function"
@@ -56,6 +57,7 @@
       scale,
       outerR,
       usableR,
+      kerfMm,
       kerfPx,
       bedY,
       stepIndex,
@@ -138,9 +140,6 @@
     const r = planStep.source;
     const k = Number(kerf) || 0;
 
-    // Röd linje = underkant på svärdet/kedjan enligt såginställningen.
-    // Eftersom sågspåret tar k mm in i materialet måste linjen ligga en kerf-bredd
-    // utanför den blå bitens ytterkant för första yttersnittet.
     if (planStep.side === "top") return { axis: "y", value: r.y - k, kerfDir: 1 };
     if (planStep.side === "bottom") return { axis: "y", value: r.y + r.h + k, kerfDir: -1 };
     if (planStep.side === "right") return { axis: "x", value: r.x + r.w + k, kerfDir: -1 };
@@ -173,7 +172,7 @@
 
   function drawPackingBlade(layout) {
     const { ctx, outerR, bedY, scale, yShift, planStep } = layout;
-    const boundary = bladeBoundary(planStep, planStep && planStep.kerfMm);
+    const boundary = bladeBoundary(planStep, layout.kerfMm);
     if (!planStep || !planStep.source || !boundary) return;
 
     const margin = 65;
