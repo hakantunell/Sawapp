@@ -2,6 +2,7 @@
 // Bootstrap för refaktoreringen.
 
 (function bootstrapSawapp() {
+  const APP_BUILD = "1.2.1";
   const scripts = [
     "src/version.js",
     "src/format.js",
@@ -79,10 +80,14 @@
     "src/voice-feedback.js"
   ];
 
+  function withBuildVersion(src) {
+    return `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(APP_BUILD)}`;
+  }
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = src;
+      script.src = withBuildVersion(src);
       script.async = false;
       script.onload = resolve;
       script.onerror = () => reject(new Error("Kunde inte ladda " + src));
