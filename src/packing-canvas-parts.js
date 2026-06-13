@@ -133,17 +133,18 @@
     ctx.fillText("bädd / stockstöd", -outerR - 65, bedY + 22);
   }
 
-  function bladeBoundary(planStep) {
+  function bladeBoundary(planStep, kerf) {
     if (!planStep || !planStep.source) return null;
     const r = planStep.source;
+    const k = Number(kerf) || 0;
 
-    // Svärdets röda referenslinje ska visa kanten där snittet börjar.
-    // I första slabbsnittet är det utsidan av sidobiten, inte insidan mot
-    // centrumblocket. Kerf-bandet ritas sedan inåt/nedåt från denna linje.
-    if (planStep.side === "top") return { axis: "y", value: r.y };
-    if (planStep.side === "bottom") return { axis: "y", value: r.y + r.h };
-    if (planStep.side === "right") return { axis: "x", value: r.x + r.w };
-    if (planStep.side === "left") return { axis: "x", value: r.x };
+    // Röd linje = underkant på svärdet/kedjan enligt såginställningen.
+    // Eftersom sågspåret tar k mm in i materialet måste linjen ligga en kerf-bredd
+    // utanför den blå bitens ytterkant för första yttersnittet.
+    if (planStep.side === "top") return { axis: "y", value: r.y - k, kerfDir: 1 };
+    if (planStep.side === "bottom") return { axis: "y", value: r.y + r.h + k, kerfDir: -1 };
+    if (planStep.side === "right") return { axis: "x", value: r.x + r.w + k, kerfDir: -1 };
+    if (planStep.side === "left") return { axis: "x", value: r.x - k, kerfDir: 1 };
     return null;
   }
 
@@ -152,24 +153,27 @@
     if (!boundary || !Number.isFinite(kerfPx) || kerfPx <= 1) return;
     const margin = 65;
     const v = boundary.value * scale;
+    const dir = boundary.kerfDir || 1;
 
     ctx.save();
     ctx.fillStyle = "rgba(239, 68, 68, .18)";
     ctx.strokeStyle = "rgba(239, 68, 68, .35)";
     ctx.lineWidth = 1;
     if (boundary.axis === "y") {
-      ctx.fillRect(-outerR - margin, v, 2 * (outerR + margin), kerfPx);
-      ctx.strokeRect(-outerR - margin, v, 2 * (outerR + margin), kerfPx);
+      const y = dir > 0 ? v : v - kerfPx;
+      ctx.fillRect(-outerR - margin, y, 2 * (outerR + margin), kerfPx);
+      ctx.strokeRect(-outerR - margin, y, 2 * (outerR + margin), kerfPx);
     } else {
-      ctx.fillRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
-      ctx.strokeRect(v - kerfPx, -outerR - margin, kerfPx, 2 * (outerR + margin));
+      const x = dir > 0 ? v : v - kerfPx;
+      ctx.fillRect(x, -outerR - margin, kerfPx, 2 * (outerR + margin));
+      ctx.strokeRect(x, -outerR - margin, kerfPx, 2 * (outerR + margin));
     }
     ctx.restore();
   }
 
   function drawPackingBlade(layout) {
     const { ctx, outerR, bedY, scale, yShift, planStep } = layout;
-    const boundary = bladeBoundary(planStep);
+    const boundary = bladeBoundary(planStep, planStep && planStep.kerfMm);
     if (!planStep || !planStep.source || !boundary) return;
 
     const margin = 65;
