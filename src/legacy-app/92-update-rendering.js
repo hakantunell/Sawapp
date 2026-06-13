@@ -9,11 +9,10 @@
   function renderCanvasForContext(context) {
     if (!context) return;
 
-    if (global.SawRenderCanvasLatestPlanAdapter && typeof global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans === "function") {
-      global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans(context.block, context.geom, context.v, context.sawList);
-      return;
-    }
-
+    // Packningsläge måste ritas direkt från den aktuella kontexten.
+    // Annars kan latest-plan-adaptern falla tillbaka till vanlig timmercanvas,
+    // vilket gör att svärdslinjen hamnar enligt 4-stegs blockningsplanen medan
+    // själva nästa-steget ändå använder packningsplanen.
     if (hasItems(context.packingLayout) && typeof global.renderPackingCanvas === "function") {
       global.renderPackingCanvas(
         context.block,
@@ -23,6 +22,11 @@
         context.sawmillCutPlan,
         context.stepIndex
       );
+      return;
+    }
+
+    if (global.SawRenderCanvasLatestPlanAdapter && typeof global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans === "function") {
+      global.SawRenderCanvasLatestPlanAdapter.renderCanvasViaLatestPlans(context.block, context.geom, context.v, context.sawList);
       return;
     }
 
