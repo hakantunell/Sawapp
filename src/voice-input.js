@@ -70,7 +70,7 @@
     const fieldIndex = words.findIndex((word, index) => {
       if (fieldId === "logLength") return /^(langd|stocklangd)$/.test(word) || (word === "stock" && words[index + 1] === "langd");
       if (fieldId === "rootDiameter") return /^(ettan|a)$/.test(word) || /^stod(ett|en|1|forsta)?$/.test(word) || (word === "stod" && /^(ett|en|1|forsta)$/.test(words[index + 1] || ""));
-      if (fieldId === "topDiameter") return /^(tvaan|tvåan|b)$/.test(word) || /^stod(tva|2|tvo|andra)?$/.test(word) || (word === "stod" && /^(tva|2|tvo|andra)$/.test(words[index + 1] || ""));
+      if (fieldId === "topDiameter") return /^(tvaan|tvaan|b)$/.test(word) || /^stod(tva|2|tvo|andra)?$/.test(word) || (word === "stod" && /^(tva|2|tvo|andra)$/.test(words[index + 1] || ""));
       if (fieldId === "rootEndDiameter") return /^rot/.test(word);
       if (fieldId === "topEndDiameter") return /^topp/.test(word);
       if (fieldId === "sweep") return /^(krokighet|krok|snoravvikelse|avvikelse)$/.test(word);
@@ -160,6 +160,14 @@
     return /^(ny\s*stock|nasta\s*stock|ny\s*matning)$/i.test(text.trim());
   }
 
+  function isApproveCommand(text) {
+    return /^(godkann|godkand|godkann\s*(stock|utbyte|bit)?|godkand\s*(stock|utbyte|bit)?|ok|okej)$/i.test(text.trim());
+  }
+
+  function isRejectCommand(text) {
+    return /^(kassera|kassera\s*(stock|utbyte|bit)?|underkann|underkand|underkann\s*(stock|utbyte|bit)?|underkand\s*(stock|utbyte|bit)?)$/i.test(text.trim());
+  }
+
   function getInput(id) {
     return global.document.getElementById(id);
   }
@@ -239,6 +247,8 @@
     if (isNextCutCommand(text)) return { ok: true, type: "next-cut", text };
     if (isPreviousCutCommand(text)) return { ok: true, type: "previous-cut", text };
     if (isNewLogCommand(text)) return { ok: true, type: "new-log", text };
+    if (isApproveCommand(text)) return { ok: true, type: "approve-product", text };
+    if (isRejectCommand(text)) return { ok: true, type: "reject-product", text };
 
     let field = findField(text);
     const number = field ? extractNumber(text, field.field) : extractNumber(text, lastField);
@@ -300,6 +310,29 @@
     return true;
   }
 
+  function handleProductionDecision(type) {
+    if (!global.SawProductionLog) {
+      setStatus("Produktionsloggen är inte laddad ännu.", "warn");
+      return false;
+    }
+
+    const fn = type === "approve-product" ? global.SawProductionLog.addCurrentProduct : global.SawProductionLog.skipCurrentProduct;
+    if (typeof fn !== "function") {
+      setStatus("Produktionsloggen saknar stöd för detta kommando.", "warn");
+      return false;
+    }
+
+    const ok = fn();
+    activateWorkScreen();
+    if (ok) {
+      playConfirmSound();
+      setStatus(type === "approve-product" ? "Godkänd. Gå vidare eller ange nästa stock." : "Kasserad. Gå vidare eller ange nästa stock.", "ok");
+    } else {
+      setStatus(type === "approve-product" ? "Ingen färdig bit att godkänna just nu." : "Ingen färdig bit att kassera just nu.", "warn");
+    }
+    return !!ok;
+  }
+
   function applyVoiceCommand(rawText) {
     const parsed = parseVoiceCommand(rawText);
     if (!parsed || !parsed.ok) {
@@ -310,6 +343,7 @@
     if (parsed.type === "next-cut") return handleMoveCut(1);
     if (parsed.type === "previous-cut") return handleMoveCut(-1);
     if (parsed.type === "new-log") return handleNewLogCommand();
+    if (parsed.type === "approve-product" || parsed.type === "reject-product") return handleProductionDecision(parsed.type);
     if (!setFieldValue(parsed.field, parsed.value)) {
       setStatus(`Kunde inte sätta ${parsed.label}.`, "warn");
       return false;
@@ -333,7 +367,7 @@
       listening = true;
       updateButtonState();
       ensureAudioContext();
-      setStatus("Lyssnar… säg mått i centimeter, “ettan 32”, “tvåan 30”, “nästa snitt” eller “ny stock”.", "listening");
+      setStatus("Lyssnar… säg mått i centimeter, “ettan 32”, “tvåan 30”, “nästa snitt”, “godkänn”, “kassera” eller “ny stock”.", "listening");
     };
     instance.onend = () => {
       listening = false;
@@ -350,7 +384,7 @@
         if (!result.isFinal) continue;
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
-        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “ettan 32”, “tvåan 30”, “längd fyra sextio”, “nästa snitt” eller “ny stock”.`, "warn");
+        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “ettan 32”, “tvåan 30”, “längd fyra sextio”, “nästa snitt”, “godkänn”, “kassera” eller “ny stock”.`, "warn");
       }
     };
     return instance;
@@ -441,7 +475,7 @@
       panel.className = "voicePanel voicePanel-work";
       panel.innerHTML = `
         <div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div>
-        <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “ettan 32”, “tvåan 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt” och “ny stock”.</div>
+        <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “ettan 32”, “tvåan 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt”, “godkänn”, “kassera” och “ny stock”.</div>
       `;
       target.prepend(panel);
     }
