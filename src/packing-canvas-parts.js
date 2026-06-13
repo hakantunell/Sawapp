@@ -67,6 +67,7 @@
       slabCuts,
       supportBottom,
       yShift,
+      packingLayout: Array.isArray(packingLayout) ? packingLayout : [],
     };
   }
 
@@ -135,23 +136,54 @@
     ctx.fillText("bädd / stockstöd", -outerR - 65, bedY + 22);
   }
 
-  function bladeBoundary(planStep, kerf) {
-    if (!planStep || !planStep.source) return null;
-    const r = planStep.source;
-    const k = Number(kerf) || 0;
+  function normalizeSide(side) {
+    if (side === "över") return "top";
+    if (side === "under") return "bottom";
+    if (side === "höger") return "right";
+    if (side === "vänster") return "left";
+    return side;
+  }
 
-    if (planStep.side === "top") return { axis: "y", value: r.y - k, kerfDir: 1 };
-    if (planStep.side === "bottom") return { axis: "y", value: r.y + r.h + k, kerfDir: -1 };
-    if (planStep.side === "right") return { axis: "x", value: r.x + r.w + k, kerfDir: -1 };
-    if (planStep.side === "left") return { axis: "x", value: r.x - k, kerfDir: 1 };
+  function sideFromRect(rect) {
+    const cx = rect.x + rect.w / 2;
+    const cy = rect.y + rect.h / 2;
+    if (Math.abs(cx) > Math.abs(cy)) return cx > 0 ? "right" : "left";
+    return cy > 0 ? "bottom" : "top";
+  }
+
+  function sourceRectForStep(layout, planStep) {
+    const side = normalizeSide(planStep && planStep.side);
+    const source = planStep && planStep.source;
+    if (source && source.type !== "center" && sideFromRect(source) === side) return source;
+
+    return (layout.packingLayout || []).find((rect) => rect.type !== "center" && sideFromRect(rect) === side) || source;
+  }
+
+  function bladeBoundary(layout, planStep) {
+    const r = sourceRectForStep(layout, planStep);
+    if (!planStep || !r) return null;
+    const side = normalizeSide(planStep.side) || sideFromRect(r);
+    const k = Number(layout.kerfMm) || 0;
+
+    if (planStep.kind === "slab") {
+      if (side === "top") return { axis: "y", value: r.y - k, kerfDir: 1 };
+      if (side === "bottom") return { axis: "y", value: r.y + r.h + k, kerfDir: -1 };
+      if (side === "right") return { axis: "x", value: r.x + r.w + k, kerfDir: -1 };
+      if (side === "left") return { axis: "x", value: r.x - k, kerfDir: 1 };
+    }
+
+    if (side === "top") return { axis: "y", value: r.y + r.h, kerfDir: 1 };
+    if (side === "bottom") return { axis: "y", value: r.y, kerfDir: -1 };
+    if (side === "right") return { axis: "x", value: r.x, kerfDir: -1 };
+    if (side === "left") return { axis: "x", value: r.x + r.w, kerfDir: 1 };
     return null;
   }
 
   function drawLocalKerfBand(ctx, layout, boundary) {
-    const { outerR, kerfPx, scale } = layout;
+    const { outerR, kerfPx } = layout;
     if (!boundary || !Number.isFinite(kerfPx) || kerfPx <= 1) return;
     const margin = 65;
-    const v = boundary.value * scale;
+    const v = boundary.value * layout.scale;
     const dir = boundary.kerfDir || 1;
 
     ctx.save();
@@ -171,12 +203,12 @@
   }
 
   function drawPackingBlade(layout) {
-    const { ctx, outerR, bedY, scale, yShift, planStep } = layout;
-    const boundary = bladeBoundary(planStep, layout.kerfMm);
-    if (!planStep || !planStep.source || !boundary) return;
+    const { ctx, outerR, bedY, yShift, planStep } = layout;
+    const boundary = bladeBoundary(layout, planStep);
+    if (!planStep || !boundary) return;
 
     const margin = 65;
-    const valuePx = boundary.value * scale;
+    const valuePx = boundary.value * layout.scale;
 
     ctx.save();
     ctx.translate(0, yShift);
