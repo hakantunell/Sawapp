@@ -6,7 +6,7 @@
 // synlig versionsetikett om elementen finns.
 
 (function initSawVersion(global) {
-  const version = "1.2.1";
+  const version = "1.2.2";
   const appName = "Sawapp";
 
   function applyVersion() {
