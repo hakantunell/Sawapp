@@ -7,6 +7,7 @@
     language: "sawapp.voiceSpeechFeedback.language",
     voiceURI: "sawapp.voiceSpeechFeedback.voiceURI",
     rate: "sawapp.voiceSpeechFeedback.rate",
+    testPhrase: "sawapp.voiceSpeechFeedback.testPhrase",
   };
 
   const DEFAULTS = {
@@ -14,7 +15,21 @@
     language: "en",
     voiceURI: "auto",
     rate: "normal",
+    testPhrase: "support1",
   };
+
+  const TEST_PHRASES = [
+    { key: "support1", label: "Stöd 1 registrerat" },
+    { key: "support2", label: "Stöd 2 registrerat" },
+    { key: "length", label: "Längd registrerad" },
+    { key: "newStock", label: "Påbörja ny stock" },
+    { key: "planReady", label: "Sågplan beräknad" },
+    { key: "approved", label: "Godkänd" },
+    { key: "rejected", label: "Kasserad" },
+    { key: "parseError", label: "Kunde inte tolka kommandot" },
+    { key: "noProductApprove", label: "Ingen färdig bit att godkänna" },
+    { key: "noProductReject", label: "Ingen färdig bit att kassera" },
+  ];
 
   function readSetting(name) {
     try {
@@ -41,6 +56,11 @@
 
   function voiceURI() {
     return readSetting("voiceURI") || "auto";
+  }
+
+  function testPhrase() {
+    const value = readSetting("testPhrase");
+    return TEST_PHRASES.some((item) => item.key === value) ? value : DEFAULTS.testPhrase;
   }
 
   function rateName() {
@@ -102,6 +122,20 @@
     select.value = hasPrevious ? previous : "auto";
   }
 
+  function populateTestPhraseSelect() {
+    const select = global.document.getElementById("voiceSpeechTestPhrase");
+    if (!select) return;
+    const selected = testPhrase();
+    select.innerHTML = "";
+    TEST_PHRASES.forEach((item) => {
+      const option = global.document.createElement("option");
+      option.value = item.key;
+      option.textContent = item.label;
+      select.appendChild(option);
+    });
+    select.value = selected;
+  }
+
   function installSettingsPanel() {
     const settings = global.document.querySelector("#settingsTab .settingsPanel") || global.document.querySelector("#settingsTab .panel");
     if (!settings || global.document.getElementById("voiceSpeechSettings")) return false;
@@ -141,9 +175,13 @@
           </select>
           <span>Korta bekräftelser fungerar oftast bäst med normal eller snabb.</span>
         </label>
+        <label>Testmeddelande
+          <select id="voiceSpeechTestPhrase"></select>
+          <span>Välj ett riktigt statusmeddelande för att jämföra röster.</span>
+        </label>
         <label>Testa tal
-          <button id="voiceSpeechTest" type="button" class="secondary">Spela testfras</button>
-          <span>Testar vald röst och hastighet.</span>
+          <button id="voiceSpeechTest" type="button" class="secondary">Spela valt meddelande</button>
+          <span>Testar vald röst, språk, hastighet och statusfras.</span>
         </label>
       </div>
     `;
@@ -154,12 +192,14 @@
     const lang = global.document.getElementById("voiceSpeechLanguage");
     const voice = global.document.getElementById("voiceSpeechVoice");
     const rate = global.document.getElementById("voiceSpeechRate");
+    const phrase = global.document.getElementById("voiceSpeechTestPhrase");
     const test = global.document.getElementById("voiceSpeechTest");
 
     if (enabled) enabled.value = isEnabled() ? "true" : "false";
     if (lang) lang.value = language();
     if (rate) rate.value = rateName();
     populateVoiceSelect();
+    populateTestPhraseSelect();
 
     if (enabled) enabled.addEventListener("change", () => writeSetting("enabled", enabled.value));
     if (lang) lang.addEventListener("change", () => {
@@ -169,9 +209,10 @@
     });
     if (voice) voice.addEventListener("change", () => writeSetting("voiceURI", voice.value));
     if (rate) rate.addEventListener("change", () => writeSetting("rate", rate.value));
+    if (phrase) phrase.addEventListener("change", () => writeSetting("testPhrase", phrase.value));
     if (test) test.addEventListener("click", () => {
       if (global.SawVoiceSpeechFeedback && typeof global.SawVoiceSpeechFeedback.speakKey === "function") {
-        global.SawVoiceSpeechFeedback.speakKey("test");
+        global.SawVoiceSpeechFeedback.speakKey(testPhrase());
       }
     });
 
@@ -191,9 +232,11 @@
 
   global.SawVoiceSpeechSettings = {
     STORAGE_KEYS,
+    TEST_PHRASES,
     isEnabled,
     language,
     voiceURI,
+    testPhrase,
     selectedVoice,
     matchingVoices,
     rateName,
