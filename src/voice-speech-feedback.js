@@ -2,34 +2,126 @@
 // Kort talsyntes-feedback för röstinmatning i sågskärmen.
 
 (function initSawVoiceSpeechFeedback(global) {
-  const STORAGE_KEY = "sawapp.voiceSpeechFeedback.enabled";
   let lastSpokenKey = "";
   let lastSpokenAt = 0;
   let observer = null;
+
+  const MESSAGES = {
+    newStock: {
+      sv: "Påbörja ny stock.",
+      en: "Start new log.",
+    },
+    support1: {
+      sv: "Stöd ett registrerat.",
+      en: "Support one registered.",
+    },
+    support2: {
+      sv: "Stöd två registrerat.",
+      en: "Support two registered.",
+    },
+    rootEnd: {
+      sv: "Rotända registrerad.",
+      en: "Root end registered.",
+    },
+    topEnd: {
+      sv: "Toppända registrerad.",
+      en: "Top end registered.",
+    },
+    length: {
+      sv: "Längd registrerad.",
+      en: "Length registered.",
+    },
+    sweep: {
+      sv: "Krokighet registrerad.",
+      en: "Sweep registered.",
+    },
+    bark: {
+      sv: "Barktjocklek registrerad.",
+      en: "Bark thickness registered.",
+    },
+    planReady: {
+      sv: "Sågplan beräknad.",
+      en: "Saw plan calculated.",
+    },
+    approved: {
+      sv: "Godkänd.",
+      en: "Approved.",
+    },
+    rejected: {
+      sv: "Kasserad.",
+      en: "Rejected.",
+    },
+    noProductApprove: {
+      sv: "Ingen färdig bit att godkänna.",
+      en: "No finished piece to approve.",
+    },
+    noProductReject: {
+      sv: "Ingen färdig bit att kassera.",
+      en: "No finished piece to reject.",
+    },
+    voiceError: {
+      sv: "Röstfel.",
+      en: "Voice error.",
+    },
+    parseError: {
+      sv: "Jag kunde inte tolka kommandot.",
+      en: "I could not understand the command.",
+    },
+    test: {
+      sv: "Talfeedback fungerar.",
+      en: "Speech feedback is working.",
+    },
+  };
+
+  function settings() {
+    return global.SawVoiceSpeechSettings || null;
+  }
 
   function supportsSpeech() {
     return !!global.speechSynthesis && !!global.SpeechSynthesisUtterance;
   }
 
   function isEnabled() {
+    const s = settings();
+    if (s && typeof s.isEnabled === "function") return s.isEnabled();
     try {
-      return global.localStorage.getItem(STORAGE_KEY) !== "false";
+      return global.localStorage.getItem("sawapp.voiceSpeechFeedback.enabled") !== "false";
     } catch (error) {
       return true;
     }
   }
 
-  function setEnabled(value) {
+  function language() {
+    const s = settings();
+    if (s && typeof s.language === "function") return s.language();
     try {
-      global.localStorage.setItem(STORAGE_KEY, value ? "true" : "false");
-    } catch (error) {}
-    updateToggle();
+      return global.localStorage.getItem("sawapp.voiceSpeechFeedback.language") || "en";
+    } catch (error) {
+      return "en";
+    }
+  }
+
+  function speechRate() {
+    const s = settings();
+    if (s && typeof s.speechRate === "function") return s.speechRate();
+    return 1.0;
+  }
+
+  function langCode() {
+    return language() === "sv" ? "sv-SE" : "en-US";
   }
 
   function pickVoice() {
     if (!supportsSpeech()) return null;
     const voices = global.speechSynthesis.getVoices ? global.speechSynthesis.getVoices() : [];
-    return voices.find((voice) => /^sv/i.test(voice.lang || "")) || voices.find((voice) => /^en/i.test(voice.lang || "")) || voices[0] || null;
+    const prefix = language() === "sv" ? /^sv/i : /^en/i;
+    return voices.find((voice) => prefix.test(voice.lang || "")) || voices[0] || null;
+  }
+
+  function textForKey(key) {
+    const item = MESSAGES[key];
+    if (!item) return null;
+    return item[language()] || item.en || item.sv || null;
   }
 
   function speak(text, options) {
@@ -44,8 +136,8 @@
     try {
       global.speechSynthesis.cancel();
       const utterance = new global.SpeechSynthesisUtterance(key);
-      utterance.lang = "sv-SE";
-      utterance.rate = options && options.rate ? options.rate : 1.05;
+      utterance.lang = langCode();
+      utterance.rate = options && options.rate ? options.rate : speechRate();
       utterance.pitch = options && options.pitch ? options.pitch : 1;
       utterance.volume = options && options.volume ? options.volume : 1;
       const voice = pickVoice();
@@ -57,6 +149,11 @@
     }
   }
 
+  function speakKey(key) {
+    const text = textForKey(key);
+    return text ? speak(text) : false;
+  }
+
   function normalize(text) {
     return String(text || "")
       .toLowerCase()
@@ -66,25 +163,25 @@
       .trim();
   }
 
-  function spokenMessageForStatus(statusText) {
+  function messageKeyForStatus(statusText) {
     const text = normalize(statusText);
     if (!text) return null;
 
-    if (/ny stock/.test(text)) return "Påbörja ny stock.";
-    if (/diameter stod 1|stod 1/.test(text) && /\d/.test(text)) return "Värde stöd ett registrerat.";
-    if (/diameter stod 2|stod 2/.test(text) && /\d/.test(text)) return "Värde stöd två registrerat.";
-    if (/rotanda|rotande/.test(text) && /\d/.test(text)) return "Rotända registrerad.";
-    if (/toppanda|toppande/.test(text) && /\d/.test(text)) return "Toppända registrerad.";
-    if (/stocklangd|langd/.test(text) && /\d/.test(text)) return "Längd registrerad.";
-    if (/krokighet|krok/.test(text) && /\d/.test(text)) return "Krokighet registrerad.";
-    if (/bark/.test(text) && /\d/.test(text)) return "Barktjocklek registrerad.";
-    if (/klar\. sagplanen ar beraknad/.test(text)) return "Sågplan beräknad.";
-    if (/godkand/.test(text)) return "Godkänd.";
-    if (/kasserad/.test(text)) return "Kasserad.";
-    if (/ingen fardig bit att godkanna/.test(text)) return "Ingen färdig bit att godkänna.";
-    if (/ingen fardig bit att kassera/.test(text)) return "Ingen färdig bit att kassera.";
-    if (/rostfel/.test(text)) return "Röstfel.";
-    if (/kunde inte hitta bade falt och varde/.test(text)) return "Jag kunde inte tolka kommandot.";
+    if (/ny stock/.test(text)) return "newStock";
+    if (/diameter stod 1|stod 1/.test(text) && /\d/.test(text)) return "support1";
+    if (/diameter stod 2|stod 2/.test(text) && /\d/.test(text)) return "support2";
+    if (/rotanda|rotande/.test(text) && /\d/.test(text)) return "rootEnd";
+    if (/toppanda|toppande/.test(text) && /\d/.test(text)) return "topEnd";
+    if (/stocklangd|langd/.test(text) && /\d/.test(text)) return "length";
+    if (/krokighet|krok/.test(text) && /\d/.test(text)) return "sweep";
+    if (/bark/.test(text) && /\d/.test(text)) return "bark";
+    if (/klar\. sagplanen ar beraknad/.test(text)) return "planReady";
+    if (/godkand/.test(text)) return "approved";
+    if (/kasserad/.test(text)) return "rejected";
+    if (/ingen fardig bit att godkanna/.test(text)) return "noProductApprove";
+    if (/ingen fardig bit att kassera/.test(text)) return "noProductReject";
+    if (/rostfel/.test(text)) return "voiceError";
+    if (/kunde inte hitta bade falt och varde/.test(text)) return "parseError";
     return null;
   }
 
@@ -95,8 +192,8 @@
   function handleStatusChange() {
     const el = statusElement();
     if (!el) return;
-    const message = spokenMessageForStatus(el.textContent || "");
-    if (message) speak(message);
+    const key = messageKeyForStatus(el.textContent || "");
+    if (key) speakKey(key);
   }
 
   function installObserver() {
@@ -108,33 +205,9 @@
     return true;
   }
 
-  function updateToggle() {
-    const button = global.document.getElementById("voiceSpeechFeedbackToggle");
-    if (!button) return;
-    button.textContent = isEnabled() ? "Talfeedback: på" : "Talfeedback: av";
-    button.classList.toggle("secondary", !isEnabled());
-  }
-
-  function installToggle() {
-    const panel = global.document.getElementById("voiceInputPanel");
-    if (!panel || global.document.getElementById("voiceSpeechFeedbackToggle")) return;
-    const toolbar = panel.querySelector(".voiceToolbar") || panel;
-    const button = global.document.createElement("button");
-    button.id = "voiceSpeechFeedbackToggle";
-    button.type = "button";
-    button.addEventListener("click", () => {
-      const next = !isEnabled();
-      setEnabled(next);
-      if (next) speak("Talfeedback på.");
-    });
-    toolbar.appendChild(button);
-    updateToggle();
-  }
-
   function install() {
     if (!supportsSpeech()) return;
     installObserver();
-    installToggle();
     if (global.speechSynthesis && typeof global.speechSynthesis.onvoiceschanged !== "undefined") {
       global.speechSynthesis.onvoiceschanged = () => pickVoice();
     }
@@ -142,8 +215,8 @@
 
   global.SawVoiceSpeechFeedback = {
     speak,
+    speakKey,
     isEnabled,
-    setEnabled,
     install,
   };
 
