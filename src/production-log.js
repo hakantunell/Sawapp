@@ -7,7 +7,7 @@
 
 (function initSawProductionLog(global) {
   const STORAGE_KEY = "sawapp.production.v1";
-  let lastDecidedProductKey = null;
+  const decidedProductKeys = new Set();
 
   function $(id) {
     return global.document.getElementById(id);
@@ -78,6 +78,7 @@
       step.kind || "",
       step.label || "",
       step.rotation || "",
+      product.productKind || "",
       product.dimension,
       product.lengthClass,
       Math.round(Number(values.logLength) || 0),
@@ -88,39 +89,17 @@
     ].join("|");
   }
 
-  function productFromSawmillStep(context) {
-    const step = context && context.step;
-    if (!step) return null;
-
-    const stockLength = Number((context.v && context.v.logLength) || (context.values && context.values.logLength) || 0);
-
-    if (step.kind === "side" && step.source) {
-      const source = step.source;
-      return {
-        dimension: source.label || dimensionLabelFromSize(source.w, source.h),
-        lengthClass: formatLengthClass(stockLength),
-        usableLengthMm: Math.round(stockLength),
-        productKind: "side",
-      };
-    }
-
-    if (step.kind === "center" && isLastStep(context)) {
-      const source = step.source || context.block;
-      return {
-        dimension: source && source.label ? source.label : blockLabel(context.block || source),
-        lengthClass: formatLengthClass(Number((context.block && context.block.usableLengthMm) || stockLength)),
-        usableLengthMm: Math.round(Number((context.block && context.block.usableLengthMm) || stockLength)),
-        productKind: "center",
-      };
-    }
-
-    return null;
+  function isDecided(context, product) {
+    return decidedProductKeys.has(productKey(context, product));
   }
 
-  function productFromTimberPlan(context) {
-    if (!context || !context.block || !isLastStep(context)) return null;
-    const stockLength = Number((context.v && context.v.logLength) || (context.values && context.values.logLength) || 0);
-    const usableLength = Number(context.block.usableLengthMm || stockLength || 0);
+  function rememberDecision(context, product) {
+    decidedProductKeys.add(productKey(context, product));
+  }
+
+  function centerProduct(context, stockLength) {
+    if (!context || !context.block) return null;
+    const usableLength = Number((context.block && context.block.usableLengthMm) || stockLength || 0);
     if (!usableLength) return null;
     return {
       dimension: blockLabel(context.block),
@@ -131,17 +110,53 @@
     };
   }
 
+  function productFromSawmillStep(context) {
+    const step = context && context.step;
+    if (!step) return null;
+
+    const stockLength = Number((context.v && context.v.logLength) || (context.values && context.values.logLength) || 0);
+
+    if (step.kind === "side" && step.source) {
+      const source = step.source;
+      const sideProduct = {
+        dimension: source.label || dimensionLabelFromSize(source.w, source.h),
+        lengthClass: formatLengthClass(stockLength),
+        usableLengthMm: Math.round(stockLength),
+        productKind: "side",
+      };
+      if (!isDecided(context, sideProduct)) return sideProduct;
+
+      // Om sista packningssteget är en sidobit återstår fortfarande kärnblocket
+      // som färdig produkt. Låt operatören godkänna/kassera det innan ny stock.
+      if (isLastStep(context)) {
+        const blockProduct = centerProduct(context, stockLength);
+        if (blockProduct && !isDecided(context, blockProduct)) return blockProduct;
+      }
+      return null;
+    }
+
+    if (step.kind === "center" && isLastStep(context)) {
+      const blockProduct = centerProduct(context, stockLength);
+      return blockProduct && !isDecided(context, blockProduct) ? blockProduct : null;
+    }
+
+    return null;
+  }
+
+  function productFromTimberPlan(context) {
+    if (!context || !context.block || !isLastStep(context)) return null;
+    const stockLength = Number((context.v && context.v.logLength) || (context.values && context.values.logLength) || 0);
+    const product = centerProduct(context, stockLength);
+    return product && !isDecided(context, product) ? product : null;
+  }
+
   function currentProduct(context) {
     const active = context || currentContext();
     if (!active) return null;
 
-    const product = Array.isArray(active.sawmillCutPlan) && active.sawmillCutPlan.length
+    return Array.isArray(active.sawmillCutPlan) && active.sawmillCutPlan.length
       ? productFromSawmillStep(active)
       : productFromTimberPlan(active);
-
-    if (!product) return null;
-    if (productKey(active, product) === lastDecidedProductKey) return null;
-    return product;
   }
 
   function pendingProductText(context) {
@@ -153,7 +168,7 @@
       if (active.step.kind === "slab") return "Yttersnitt/slabba räknas inte som färdig bit.";
       if (active.step.kind === "center") return "Kärnblocket kan godkännas efter sista kärnsnittet.";
     }
-    if (lastDecidedProductKey) return "Den färdiga biten är redan hanterad. Gå vidare eller börja med ny stock.";
+    if (decidedProductKeys.size) return "Den färdiga biten är redan hanterad. Gå vidare eller börja med ny stock.";
     return "Aktuell bit kan godkännas först efter sista snittet.";
   }
 
@@ -168,7 +183,7 @@
   }
 
   function startNewStockAfterDecision() {
-    lastDecidedProductKey = null;
+    decidedProductKeys.clear();
     clearCurrentStockInputs();
     if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
       global.SawState.resetCurrentStepIndex();
@@ -182,7 +197,14 @@
 
   function moveToNextStepAfterDecision(context) {
     const active = context || currentContext();
-    if (!active) return { moved: false, newStock: false };
+    if (!active) return { moved: false, newStock: false, moreProduct: false };
+
+    const remainingProduct = currentProduct(active);
+    if (remainingProduct) {
+      render();
+      updateWorkScreenButtons();
+      return { moved: false, newStock: false, moreProduct: true, remainingProduct };
+    }
 
     const currentIndex = Number(active.stepIndex || 0);
     const lastIndex = Math.max(0, Number(active.activePlanLength || 0) - 1);
@@ -191,11 +213,20 @@
         global.SawState.setCurrentStepIndex(currentIndex + 1);
       }
       if (typeof global.update === "function") global.update();
-      return { moved: true, newStock: false };
+      return { moved: true, newStock: false, moreProduct: false };
     }
 
     startNewStockAfterDecision();
-    return { moved: false, newStock: true };
+    return { moved: false, newStock: true, moreProduct: false };
+  }
+
+  function decisionStatus(prefix, product, result) {
+    if (result.moreProduct && result.remainingProduct) {
+      return `${prefix}: ${product.dimension}, ${product.lengthClass}. Färdig bit kvar: ${result.remainingProduct.dimension}, ${result.remainingProduct.lengthClass}.`;
+    }
+    return result.newStock
+      ? `${prefix}: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
+      : `${prefix}: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`;
   }
 
   function addCurrentProduct(context) {
@@ -206,16 +237,13 @@
       return false;
     }
 
-    const key = productKey(active, product);
     const entries = readEntries();
     entries.push({ ...product, addedAt: new Date().toISOString() });
     writeEntries(entries);
-    lastDecidedProductKey = key;
+    rememberDecision(active, product);
 
     const result = moveToNextStepAfterDecision(active);
-    setStatus(result.newStock
-      ? `Godkänd: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
-      : `Godkänd: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`);
+    setStatus(decisionStatus("Godkänd", product, result));
     return true;
   }
 
@@ -227,11 +255,9 @@
       return false;
     }
 
-    lastDecidedProductKey = productKey(active, product);
+    rememberDecision(active, product);
     const result = moveToNextStepAfterDecision(active);
-    setStatus(result.newStock
-      ? `Kasserad: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
-      : `Kasserad: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`);
+    setStatus(decisionStatus("Kasserad", product, result));
     return true;
   }
 
