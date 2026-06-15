@@ -14,7 +14,7 @@
 
   function minRequiredRawDepth(rect) {
     const nominal = parseNominalWidth(rect);
-    return Math.max(50, Math.round(nominal * 0.5));
+    return Math.max(70, Math.round(nominal * 0.7));
   }
 
   function rawDepthAtHorizontalEnd(rect, R, topSide) {
