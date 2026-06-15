@@ -51,6 +51,7 @@
     "fix-v38.js",
     "fix-v39.js",
     "fix-v40.js",
+    "fix-v41.js",
     "src/current-step-sync.js",
     "src/current-step-navigation-sync.js",
     "src/latest-plan-sync.js",
