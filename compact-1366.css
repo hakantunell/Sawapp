@@ -1,6 +1,7 @@
 @media (max-height: 820px) {
   body {
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .tabs {
@@ -26,7 +27,11 @@
   }
 
   #bigTab {
-    height: calc(100vh - 40px) !important;
+    min-height: calc(100vh - 40px) !important;
+    overflow: visible !important;
+  }
+
+  #bigTab.active {
     overflow: hidden !important;
   }
 
