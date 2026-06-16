@@ -47,6 +47,28 @@
     return `${flooredHalfMetre.toFixed(1).replace(".", ",")} m`;
   }
 
+  function parseLengthClassToMm(lengthClass) {
+    const text = String(lengthClass || "").trim().replace(",", ".");
+    const match = text.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return 0;
+    return Math.round(Number(match[1]) * 1000);
+  }
+
+  function lengthCmForEntry(entry) {
+    const mm = Number(entry && entry.usableLengthMm) || parseLengthClassToMm(entry && entry.lengthClass);
+    if (!mm) return "";
+    const cm = mm / 10;
+    return Number.isInteger(cm) ? String(cm.toFixed(0)) : String(Number(cm.toFixed(1)));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function dimensionLabelFromSize(width, height) {
     const w = Math.round(Number(width) || 0);
     const h = Math.round(Number(height) || 0);
@@ -264,8 +286,10 @@
   function summaryRows() {
     const map = new Map();
     for (const entry of readEntries()) {
-      const key = `${entry.dimension}|${entry.lengthClass}`;
-      const existing = map.get(key) || { dimension: entry.dimension, lengthClass: entry.lengthClass, count: 0 };
+      const dimension = String(entry.dimension || "–").trim() || "–";
+      const lengthClass = String(entry.lengthClass || formatLengthClass(entry.usableLengthMm)).trim() || "–";
+      const key = `${dimension}|${lengthClass}`;
+      const existing = map.get(key) || { dimension, lengthClass, count: 0 };
       existing.count += 1;
       map.set(key, existing);
     }
@@ -275,9 +299,107 @@
     });
   }
 
+  function updateEntry(index, patch) {
+    const entries = readEntries();
+    const entry = entries[index];
+    if (!entry) return false;
+
+    const next = { ...entry };
+    if (Object.prototype.hasOwnProperty.call(patch, "dimension")) {
+      next.dimension = String(patch.dimension || "").trim() || "–";
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "lengthCm")) {
+      const cm = Number(String(patch.lengthCm || "").replace(",", "."));
+      if (!Number.isFinite(cm) || cm <= 0) return false;
+      next.usableLengthMm = Math.round(cm * 10);
+      next.lengthClass = formatLengthClass(next.usableLengthMm);
+    }
+
+    next.editedAt = new Date().toISOString();
+    entries[index] = next;
+    writeEntries(entries);
+    render();
+    setStatus(`Ändrad: ${next.dimension}, ${next.lengthClass}.`);
+    return true;
+  }
+
+  function deleteEntry(index) {
+    const entries = readEntries();
+    const entry = entries[index];
+    if (!entry) return false;
+    if (global.confirm && !global.confirm(`Ta bort ${entry.dimension || "bit"}, ${entry.lengthClass || "okänd längd"}?`)) return false;
+    entries.splice(index, 1);
+    writeEntries(entries);
+    render();
+    setStatus("Raden borttagen.");
+    return true;
+  }
+
+  function renderSummaryTable(rows) {
+    if (!rows.length) return `<div class="status-bad">Inget godkänt virke registrerat ännu.</div>`;
+    return `
+      <h3>Summering</h3>
+      <table class="productionTable productionSummaryTable">
+        <thead><tr><th>Dimension</th><th>Längdklass</th><th>Antal</th></tr></thead>
+        <tbody>
+          ${rows.map(row => `<tr><td>${escapeHtml(row.dimension)}</td><td>${escapeHtml(row.lengthClass)}</td><td><strong>${row.count}</strong></td></tr>`).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderEntryTable(entries) {
+    if (!entries.length) return "";
+    return `
+      <h3>Redigera sågade bitar</h3>
+      <table class="productionTable productionEditTable">
+        <thead><tr><th>#</th><th>Dimension</th><th>Längd</th><th></th></tr></thead>
+        <tbody>
+          ${entries.map((entry, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td><input class="productionDimensionInput" data-entry-index="${index}" value="${escapeHtml(entry.dimension || "")}" aria-label="Dimension för rad ${index + 1}"></td>
+              <td><input class="productionLengthInput" data-entry-index="${index}" type="number" inputmode="decimal" step="1" value="${escapeHtml(lengthCmForEntry(entry))}" aria-label="Längd i centimeter för rad ${index + 1}"><span class="productionUnit">cm</span></td>
+              <td><button class="productionDelete secondary" type="button" data-entry-index="${index}">Ta bort</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function installEditHandlers(el) {
+    el.querySelectorAll(".productionDimensionInput").forEach((input) => {
+      const apply = () => updateEntry(Number(input.dataset.entryIndex), { dimension: input.value });
+      input.addEventListener("change", apply);
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        input.blur();
+        apply();
+      });
+    });
+
+    el.querySelectorAll(".productionLengthInput").forEach((input) => {
+      const apply = () => updateEntry(Number(input.dataset.entryIndex), { lengthCm: input.value });
+      input.addEventListener("change", apply);
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        input.blur();
+        apply();
+      });
+    });
+
+    el.querySelectorAll(".productionDelete").forEach((button) => {
+      button.onclick = () => deleteEntry(Number(button.dataset.entryIndex));
+    });
+  }
+
   function render(target) {
     const el = target || $("sideYield");
     if (!el) return false;
+    const entries = readEntries();
     const rows = summaryRows();
     const product = currentProduct();
     el.innerHTML = `
@@ -287,15 +409,9 @@
           <button id="productionSkip" type="button" class="secondary" ${product ? "" : "disabled"}>Kassera + gå vidare</button>
           <button id="productionClear" type="button" class="secondary">Nollställ logg</button>
         </div>
-        <div id="productionLogStatus" class="hint">${product ? `Färdig bit: ${product.dimension}, ${product.lengthClass}.` : pendingProductText()}</div>
-        ${rows.length ? `
-          <table class="productionTable">
-            <thead><tr><th>Dimension</th><th>Längdklass</th><th>Antal</th></tr></thead>
-            <tbody>
-              ${rows.map(row => `<tr><td>${row.dimension}</td><td>${row.lengthClass}</td><td><strong>${row.count}</strong></td></tr>`).join("")}
-            </tbody>
-          </table>
-        ` : `<div class="status-bad">Inget godkänt virke registrerat ännu.</div>`}
+        <div id="productionLogStatus" class="hint">${product ? `Färdig bit: ${escapeHtml(product.dimension)}, ${escapeHtml(product.lengthClass)}.` : escapeHtml(pendingProductText())}</div>
+        ${renderSummaryTable(rows)}
+        ${renderEntryTable(entries)}
       </div>
     `;
 
@@ -309,6 +425,7 @@
       writeEntries([]);
       render();
     };
+    installEditHandlers(el);
     updateWorkScreenButtons();
     return true;
   }
@@ -364,6 +481,8 @@
     skipCurrentProduct,
     render,
     readEntries,
+    updateEntry,
+    deleteEntry,
     currentProduct,
     clear: () => writeEntries([]),
   };
