@@ -2,7 +2,7 @@
 // Bootstrap för refaktoreringen.
 
 (function bootstrapSawapp() {
-  const APP_BUILD = "1.2.18";
+  const APP_BUILD = "1.2.19";
   const scripts = [
     "src/version.js",
     "src/format.js",
