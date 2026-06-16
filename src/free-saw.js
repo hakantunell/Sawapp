@@ -1,11 +1,10 @@
 // src/free-saw.js
 // Frisågning: manuell registrering av vad som faktiskt blev sågat.
+// Använder samma gemensamma röstinmatning som sågskärmen.
 
 (function initSawFreeSaw(global) {
   function $(id) { return global.document.getElementById(id); }
 
-  let recognition = null;
-  let listening = false;
   let voiceInstalled = false;
 
   function escapeHtml(value) {
@@ -86,6 +85,11 @@
       .replace(/^\w/, (char) => char.toUpperCase());
   }
 
+  function isFreeSawActive() {
+    const tab = $("freeSawTab");
+    return !!tab && tab.classList.contains("active");
+  }
+
   function isWildPanel(text) {
     return /vildmarkspanel|vildmarks\s*panel|vildmark/.test(normalizeText(text));
   }
@@ -151,6 +155,11 @@
     return { dimension, lengthCm, note, rawText };
   }
 
+  function isExplicitFreeSawCommand(text) {
+    const normalized = normalizeText(text);
+    return /^(registrera|spara|sagat|sågat|korrigera|andra|ändra)\b/.test(normalized) || isWildPanel(text);
+  }
+
   function applyParsedSpeech(parsed, autoRegister) {
     if (!parsed) return false;
     const dim = $("freeSawDimension");
@@ -196,102 +205,49 @@
     return ok;
   }
 
-  function recognitionCtor() {
-    return global.SpeechRecognition || global.webkitSpeechRecognition || null;
+  function handleVoiceCommand(rawText, options) {
+    const normalized = normalizeText(rawText);
+    const parsed = parseFreeSawSpeech(rawText);
+    const isCorrection = /^(korrigera|andra|ändra)\b/.test(normalized);
+    const autoRegister = /^(registrera|spara|sagat|sågat)\b/.test(normalized);
+    const explicit = isExplicitFreeSawCommand(rawText);
+    const fallback = options && options.fallback;
+
+    if (!parsed) return false;
+    if (!explicit && !fallback && !isFreeSawActive()) return false;
+
+    if (isCorrection) return correctLatest(parsed);
+    return applyParsedSpeech(parsed, autoRegister);
   }
 
-  function supportsSpeechRecognition() {
-    return !!recognitionCtor();
+  function isListening() {
+    return !!(global.SawVoiceInput && typeof global.SawVoiceInput.isListening === "function" && global.SawVoiceInput.isListening());
   }
 
   function updateVoiceButton() {
     const button = $("freeSawVoiceToggle");
     if (!button) return;
-    button.textContent = listening ? "Stoppa röstinmatning" : "Starta röstinmatning";
-    button.classList.toggle("voiceListening", listening);
-  }
-
-  function createRecognition() {
-    const Ctor = recognitionCtor();
-    if (!Ctor) return null;
-    const instance = new Ctor();
-    instance.lang = "sv-SE";
-    instance.continuous = true;
-    instance.interimResults = false;
-    instance.maxAlternatives = 3;
-    instance.onstart = () => {
-      listening = true;
-      updateVoiceButton();
-      setStatus("Lyssnar… säg t.ex. “registrera 18 gånger 18 längd 420”, “vildmarkspanel längd 420” eller “korrigera längd 430”.", "listening");
-      speak("Frisågning lyssnar.");
-    };
-    instance.onend = () => {
-      listening = false;
-      updateVoiceButton();
-      setStatus("Röstinmatning stoppad.", "");
-    };
-    instance.onerror = (event) => {
-      listening = false;
-      updateVoiceButton();
-      const errorText = event.error || "okänt fel";
-      setStatus(`Röstfel: ${errorText}.`, "warn");
-      speak(`Röstfel. ${errorText}.`);
-    };
-    instance.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        if (!result.isFinal) continue;
-        const alternatives = Array.from(result).map((item) => item.transcript);
-        const applied = alternatives.some((alternative) => {
-          const normalized = normalizeText(alternative);
-          const isCorrection = /^(korrigera|andra|ändra)\b/.test(normalized);
-          if (isCorrection) return correctLatest(parseFreeSawSpeech(alternative));
-          const autoRegister = /^registrera\b|^spara\b|^sagat\b|^sågat\b/.test(normalized);
-          return applyParsedSpeech(parseFreeSawSpeech(alternative), autoRegister);
-        });
-        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “registrera 18 gånger 18 längd 420” eller “korrigera längd 430”.`, "warn");
-      }
-    };
-    return instance;
+    const active = isListening();
+    button.textContent = active ? "Stoppa röstinmatning" : "Starta röstinmatning";
+    button.classList.toggle("voiceListening", active);
   }
 
   function startVoice() {
-    if (!supportsSpeechRecognition()) {
-      setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
-      speak("Röstinmatning stöds inte i den här webbläsaren.");
-      return;
-    }
-    if (global.SawVoiceRoute && typeof global.SawVoiceRoute.primeHeadset === "function") global.SawVoiceRoute.primeHeadset();
-    if (!recognition) recognition = createRecognition();
-    if (!recognition) {
-      setStatus("Kunde inte skapa röstinmatning.", "warn");
-      return;
-    }
-    if (listening) {
-      setStatus("Frisågning lyssnar redan.", "listening");
-      return;
-    }
-    setStatus("Startar röstinmatning…", "listening");
-    try {
-      recognition.start();
-    } catch (error) {
-      setStatus(`Kunde inte starta röstinmatning: ${error.message}`, "warn");
-      speak("Kunde inte starta röstinmatning.");
-    }
+    setStatus("Startar gemensam röstinmatning…", "listening");
+    if (global.SawVoiceInput && typeof global.SawVoiceInput.start === "function") global.SawVoiceInput.start();
+    else setStatus("Röstinmatningen är inte laddad ännu.", "warn");
+    updateVoiceButton();
   }
 
   function stopVoice() {
-    if (recognition && listening) {
-      setStatus("Stoppar röstinmatning…", "");
-      recognition.stop();
-    } else {
-      setStatus("Röstinmatningen är redan stoppad.", "");
-    }
+    if (global.SawVoiceInput && typeof global.SawVoiceInput.stop === "function") global.SawVoiceInput.stop();
+    updateVoiceButton();
   }
 
   function toggleVoice() {
-    if (listening) stopVoice();
+    if (global.SawVoiceInput && typeof global.SawVoiceInput.toggle === "function") global.SawVoiceInput.toggle();
     else startVoice();
+    updateVoiceButton();
   }
 
   function renderLatest() {
@@ -346,6 +302,7 @@
   function render() {
     renderLatest();
     renderTotals();
+    updateVoiceButton();
   }
 
   function addFromForm() {
@@ -373,7 +330,6 @@
     if (voice && !voiceInstalled) {
       voiceInstalled = true;
       voice.onclick = toggleVoice;
-      if (!supportsSpeechRecognition()) voice.disabled = true;
     }
     ["freeSawDimension", "freeSawLength", "freeSawNote"].forEach((id) => {
       const input = $(id);
@@ -385,11 +341,24 @@
         addFromForm();
       });
     });
+    global.addEventListener("sawapp:voice-state", updateVoiceButton);
     updateVoiceButton();
     render();
   }
 
-  global.SawFreeSaw = { install, render, addFromForm, correctLatest, parseFreeSawSpeech, startVoice, stopVoice, toggleVoice, isListening: () => listening };
+  global.SawFreeSaw = {
+    install,
+    render,
+    addFromForm,
+    correctLatest,
+    handleVoiceCommand,
+    parseFreeSawSpeech,
+    startVoice,
+    stopVoice,
+    toggleVoice,
+    isListening,
+    syncVoiceButton: updateVoiceButton,
+  };
 
   if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", install);
   else install();
