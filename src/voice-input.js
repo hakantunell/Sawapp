@@ -1,5 +1,5 @@
 // src/voice-input.js
-// Röstinmatning för stockmått och sågflöde.
+// Gemensam röstinmatning för stockmått, sågflöde och frisågning.
 
 (function initSawVoiceInput(global) {
   const FIELD_ALIASES = [
@@ -261,9 +261,10 @@
 
   function setStatus(message, kind) {
     const el = getInput("voiceInputStatus");
-    if (!el) return;
-    el.textContent = message;
-    el.className = `voiceStatus ${kind || ""}`.trim();
+    if (el) {
+      el.textContent = message;
+      el.className = `voiceStatus ${kind || ""}`.trim();
+    }
   }
 
   function handleDoneCommand() {
@@ -333,9 +334,25 @@
     return !!ok;
   }
 
+  function tryFreeSawCommand(rawText, options) {
+    if (!global.SawFreeSaw || typeof global.SawFreeSaw.handleVoiceCommand !== "function") return false;
+    const ok = global.SawFreeSaw.handleVoiceCommand(rawText, options || {});
+    if (ok) {
+      playConfirmSound();
+      setStatus("Frisågning uppdaterad.", "ok");
+      if (typeof global.SawFreeSaw.syncVoiceButton === "function") global.SawFreeSaw.syncVoiceButton();
+    }
+    return !!ok;
+  }
+
   function applyVoiceCommand(rawText) {
+    // Free-saw commands are part of the shared voice engine. Explicit commands like
+    // “registrera …”, “sågat …”, “korrigera …” and “vildmarkspanel …” should work on any tab.
+    if (tryFreeSawCommand(rawText, { fallback: false })) return true;
+
     const parsed = parseVoiceCommand(rawText);
     if (!parsed || !parsed.ok) {
+      if (tryFreeSawCommand(rawText, { fallback: true })) return true;
       setStatus(`Jag hörde: “${rawText}”. Tolkade som: “${parsed ? parsed.text : ""}”. ${parsed ? parsed.reason : "Kunde inte tolka kommandot."}`, "warn");
       return false;
     }
@@ -367,7 +384,7 @@
       listening = true;
       updateButtonState();
       ensureAudioContext();
-      setStatus("Lyssnar… säg mått i centimeter, “ettan 32”, “tvåan 30”, “nästa snitt”, “godkänn”, “kassera” eller “ny stock”.", "listening");
+      setStatus("Lyssnar… samma röstinmatning gäller på alla skärmar. Säg mått, “nästa snitt”, “godkänn”, “registrera …” eller “korrigera …”.", "listening");
     };
     instance.onend = () => {
       listening = false;
@@ -384,7 +401,7 @@
         if (!result.isFinal) continue;
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => applyVoiceCommand(alternative));
-        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “ettan 32”, “tvåan 30”, “längd fyra sextio”, “nästa snitt”, “godkänn”, “kassera” eller “ny stock”.`, "warn");
+        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “ettan 32”, “längd fyra sextio”, “registrera 18 gånger 18 längd 420”, “korrigera längd 430”, “nästa snitt”, “godkänn”, “kassera” eller “ny stock”.`, "warn");
       }
     };
     return instance;
@@ -395,8 +412,12 @@
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
       return;
     }
+    if (global.SawVoiceRoute && typeof global.SawVoiceRoute.primeHeadset === "function") global.SawVoiceRoute.primeHeadset();
     if (!recognition) recognition = createRecognition();
-    if (!recognition || listening) return;
+    if (!recognition || listening) {
+      updateButtonState();
+      return;
+    }
     try {
       ensureAudioContext();
       recognition.start();
@@ -407,6 +428,7 @@
 
   function stopListening() {
     if (recognition && listening) recognition.stop();
+    else updateButtonState();
   }
 
   function toggleListening() {
@@ -415,16 +437,24 @@
   }
 
   function updateButtonState() {
-    const button = getInput("voiceInputToggle");
-    if (!button) return;
-    button.textContent = listening ? "Stoppa röstinmatning" : "Starta röstinmatning";
-    button.classList.toggle("voiceListening", listening);
+    const buttons = [getInput("voiceInputToggle"), getInput("freeSawVoiceToggle")].filter(Boolean);
+    buttons.forEach((button) => {
+      button.textContent = listening ? "Stoppa röstinmatning" : "Starta röstinmatning";
+      button.classList.toggle("voiceListening", listening);
+      button.title = listening ? "Röstinmatningen är igång för alla skärmar." : "Startar gemensam röstinmatning för alla skärmar.";
+    });
+    if (global.SawFreeSaw && typeof global.SawFreeSaw.syncVoiceButton === "function") global.SawFreeSaw.syncVoiceButton();
+    try { global.dispatchEvent(new global.CustomEvent("sawapp:voice-state", { detail: { listening } })); } catch (error) {}
   }
 
   function isMediaKeyEvent(event) {
     return event && (
       event.key === "MediaPlayPause" ||
       event.code === "MediaPlayPause" ||
+      event.key === "Play" ||
+      event.code === "Play" ||
+      event.key === "Pause" ||
+      event.code === "Pause" ||
       event.keyCode === 179 ||
       event.which === 179
     );
@@ -432,8 +462,8 @@
 
   function runMediaToggle(event) {
     const now = Date.now();
-    if (event && event.repeat && now - lastMediaToggleAt < 700) return;
-    if (now - lastMediaToggleAt < 450) return;
+    if (event && event.repeat && now - lastMediaToggleAt < 900) return;
+    if (now - lastMediaToggleAt < 700) return;
     lastMediaToggleAt = now;
     if (event) {
       event.preventDefault();
@@ -444,7 +474,7 @@
 
   function installMediaSessionHandlers() {
     if (!global.navigator || !global.navigator.mediaSession || typeof global.navigator.mediaSession.setActionHandler !== "function") return;
-    ["play", "pause"].forEach((action) => {
+    ["play", "pause", "stop"].forEach((action) => {
       try {
         global.navigator.mediaSession.setActionHandler(action, () => runMediaToggle());
       } catch (error) {}
@@ -475,25 +505,39 @@
       panel.className = "voicePanel voicePanel-work";
       panel.innerHTML = `
         <div class="toolbar voiceToolbar"><button id="voiceInputToggle" type="button">Starta röstinmatning</button></div>
-        <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “ettan 32”, “tvåan 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg “nästa snitt”, “godkänn”, “kassera” och “ny stock”.</div>
+        <div id="voiceInputStatus" class="voiceStatus">Säg mått i centimeter: “ettan 32”, “tvåan 30”, “rot 34”, “topp 29”, “längd fyra sextio”. Säg även “registrera …” och “korrigera …”.</div>
       `;
       target.prepend(panel);
     }
 
-    const button = getInput("voiceInputToggle");
-    if (button && !voiceInstalled) {
+    const mainButton = getInput("voiceInputToggle");
+    const freeButton = getInput("freeSawVoiceToggle");
+    [mainButton, freeButton].filter(Boolean).forEach((button) => {
+      if (button.dataset.sharedVoiceInstalled === "true") return;
       button.addEventListener("click", toggleListening);
-      voiceInstalled = true;
-    }
+      button.dataset.sharedVoiceInstalled = "true";
+    });
+    voiceInstalled = true;
+
     installMediaKeyToggle();
     if (!supportsSpeechRecognition()) {
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
-      if (button) button.disabled = true;
+      [mainButton, freeButton].filter(Boolean).forEach((button) => { button.disabled = true; });
     }
     updateButtonState();
   }
 
-  global.SawVoiceInput = { install: installVoiceInput, start: startListening, stop: stopListening, toggle: toggleListening, parseVoiceCommand, applyVoiceCommand, supportsSpeechRecognition };
+  global.SawVoiceInput = {
+    install: installVoiceInput,
+    start: startListening,
+    stop: stopListening,
+    toggle: toggleListening,
+    isListening: () => listening,
+    parseVoiceCommand,
+    applyVoiceCommand,
+    supportsSpeechRecognition,
+    updateButtonState,
+  };
 
   if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", installVoiceInput);
   else installVoiceInput();
