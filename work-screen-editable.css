@@ -14,7 +14,8 @@
   text-align:right;
   color:#0f172a;
 }
-.bigMeasuredData .measureInput:focus{
+.bigMeasuredData .measureInput:focus,
+.productionEditTable input:focus{
   outline:2px solid #0f62fe;
   outline-offset:1px;
 }
@@ -22,11 +23,54 @@
   font-size:.85rem;
   color:#475569;
 }
+.productionLog h3{
+  margin:.9rem 0 .35rem;
+  font-size:.95rem;
+  color:#334155;
+}
+.productionEditTable input{
+  width:100%;
+  min-width:0;
+  padding:7px 8px;
+  border:1px solid #cbd5e1;
+  border-radius:9px;
+  font-size:.9rem;
+  background:#fff;
+}
+.productionEditTable .productionLengthInput{
+  width:84px;
+  text-align:right;
+  font-weight:850;
+}
+.productionEditTable .productionUnit{
+  margin-left:4px;
+  color:#64748b;
+  font-size:.78rem;
+  font-weight:850;
+}
+.productionEditTable .productionDelete{
+  padding:7px 9px;
+  margin:0;
+  white-space:nowrap;
+}
+.productionSummaryTable strong{
+  font-size:1rem;
+}
 @media(max-width:430px){
   .bigMeasuredData .measureRow{
     grid-template-columns:1fr 82px auto;
   }
   .bigMeasuredData .measureRow em{
     grid-column:1/-1;
+  }
+  .productionEditTable{
+    font-size:.78rem;
+  }
+  .productionEditTable th,
+  .productionEditTable td{
+    padding:5px;
+  }
+  .productionEditTable .productionLengthInput{
+    width:70px;
   }
 }
