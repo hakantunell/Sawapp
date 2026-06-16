@@ -1,17 +1,11 @@
 // src/production-log.js
 // Lokal produktionslogg för sågat virke.
-//
-// Loggen är avsedd som enkel summering i sågverket: dimension + längdklass + antal.
-// Den räknar bara bitar som operatören uttryckligen godkänner när aktuell
-// sågplansrad faktiskt motsvarar en färdig bit.
 
 (function initSawProductionLog(global) {
   const STORAGE_KEY = "sawapp.production.v1";
   const decidedProductKeys = new Set();
 
-  function $(id) {
-    return global.document.getElementById(id);
-  }
+  function $(id) { return global.document.getElementById(id); }
 
   function readEntries() {
     try {
@@ -35,9 +29,7 @@
   }
 
   function currentContext() {
-    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
-      return global.SawUpdatePipeline.buildPlanContext();
-    }
+    if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") return global.SawUpdatePipeline.buildPlanContext();
     return null;
   }
 
@@ -83,6 +75,10 @@
   function setStatus(message) {
     const status = $("productionLogStatus");
     if (status) status.textContent = message;
+    const editStatus = $("productionEditStatus");
+    if (editStatus) editStatus.textContent = message;
+    const freeStatus = $("freeSawStatus");
+    if (freeStatus) freeStatus.textContent = message;
   }
 
   function isLastStep(context) {
@@ -111,13 +107,8 @@
     ].join("|");
   }
 
-  function isDecided(context, product) {
-    return decidedProductKeys.has(productKey(context, product));
-  }
-
-  function rememberDecision(context, product) {
-    decidedProductKeys.add(productKey(context, product));
-  }
+  function isDecided(context, product) { return decidedProductKeys.has(productKey(context, product)); }
+  function rememberDecision(context, product) { decidedProductKeys.add(productKey(context, product)); }
 
   function centerProduct(context, stockLength) {
     if (!context || !context.block) return null;
@@ -135,7 +126,6 @@
   function productFromSawmillStep(context) {
     const step = context && context.step;
     if (!step) return null;
-
     const stockLength = Number((context.v && context.v.logLength) || (context.values && context.values.logLength) || 0);
 
     if (step.kind === "side" && step.source) {
@@ -148,8 +138,6 @@
       };
       if (!isDecided(context, sideProduct)) return sideProduct;
 
-      // Om sista packningssteget är en sidobit återstår fortfarande kärnblocket
-      // som färdig produkt. Låt operatören godkänna/kassera det innan ny stock.
       if (isLastStep(context)) {
         const blockProduct = centerProduct(context, stockLength);
         if (blockProduct && !isDecided(context, blockProduct)) return blockProduct;
@@ -175,7 +163,6 @@
   function currentProduct(context) {
     const active = context || currentContext();
     if (!active) return null;
-
     return Array.isArray(active.sawmillCutPlan) && active.sawmillCutPlan.length
       ? productFromSawmillStep(active)
       : productFromTimberPlan(active);
@@ -207,14 +194,10 @@
   function startNewStockAfterDecision() {
     decidedProductKeys.clear();
     clearCurrentStockInputs();
-    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") {
-      global.SawState.resetCurrentStepIndex();
-    }
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") global.SawState.resetCurrentStepIndex();
     if (typeof global.update === "function") global.update();
-    if (global.SawWorkScreen && typeof global.SawWorkScreen.renderWorkScreen === "function") {
-      global.SawWorkScreen.renderWorkScreen();
-    }
-    render();
+    if (global.SawWorkScreen && typeof global.SawWorkScreen.renderWorkScreen === "function") global.SawWorkScreen.renderWorkScreen();
+    refreshViews();
   }
 
   function moveToNextStepAfterDecision(context) {
@@ -223,7 +206,7 @@
 
     const remainingProduct = currentProduct(active);
     if (remainingProduct) {
-      render();
+      refreshViews();
       updateWorkScreenButtons();
       return { moved: false, newStock: false, moreProduct: true, remainingProduct };
     }
@@ -231,9 +214,7 @@
     const currentIndex = Number(active.stepIndex || 0);
     const lastIndex = Math.max(0, Number(active.activePlanLength || 0) - 1);
     if (currentIndex < lastIndex) {
-      if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") {
-        global.SawState.setCurrentStepIndex(currentIndex + 1);
-      }
+      if (global.SawState && typeof global.SawState.setCurrentStepIndex === "function") global.SawState.setCurrentStepIndex(currentIndex + 1);
       if (typeof global.update === "function") global.update();
       return { moved: true, newStock: false, moreProduct: false };
     }
@@ -243,9 +224,7 @@
   }
 
   function decisionStatus(prefix, product, result) {
-    if (result.moreProduct && result.remainingProduct) {
-      return `${prefix}: ${product.dimension}, ${product.lengthClass}. Färdig bit kvar: ${result.remainingProduct.dimension}, ${result.remainingProduct.lengthClass}.`;
-    }
+    if (result.moreProduct && result.remainingProduct) return `${prefix}: ${product.dimension}, ${product.lengthClass}. Färdig bit kvar: ${result.remainingProduct.dimension}, ${result.remainingProduct.lengthClass}.`;
     return result.newStock
       ? `${prefix}: ${product.dimension}, ${product.lengthClass}. Ny stock – ange nya mått.`
       : `${prefix}: ${product.dimension}, ${product.lengthClass}. Gick vidare till nästa snitt.`;
@@ -266,6 +245,30 @@
 
     const result = moveToNextStepAfterDecision(active);
     setStatus(decisionStatus("Godkänd", product, result));
+    return true;
+  }
+
+  function addManualEntry({ dimension, lengthCm, note } = {}) {
+    const dim = String(dimension || "").trim();
+    const cm = Number(String(lengthCm || "").replace(",", "."));
+    if (!dim || !Number.isFinite(cm) || cm <= 0) {
+      setStatus("Ange dimension och längd för frisågning.");
+      return false;
+    }
+    const usableLengthMm = Math.round(cm * 10);
+    const entry = {
+      dimension: dim,
+      lengthClass: formatLengthClass(usableLengthMm),
+      usableLengthMm,
+      productKind: "free",
+      note: String(note || "").trim(),
+      addedAt: new Date().toISOString(),
+    };
+    const entries = readEntries();
+    entries.push(entry);
+    writeEntries(entries);
+    refreshViews();
+    setStatus(`Frisågning registrerad: ${entry.dimension}, ${entry.lengthClass}.`);
     return true;
   }
 
@@ -305,20 +308,19 @@
     if (!entry) return false;
 
     const next = { ...entry };
-    if (Object.prototype.hasOwnProperty.call(patch, "dimension")) {
-      next.dimension = String(patch.dimension || "").trim() || "–";
-    }
+    if (Object.prototype.hasOwnProperty.call(patch, "dimension")) next.dimension = String(patch.dimension || "").trim() || "–";
     if (Object.prototype.hasOwnProperty.call(patch, "lengthCm")) {
       const cm = Number(String(patch.lengthCm || "").replace(",", "."));
       if (!Number.isFinite(cm) || cm <= 0) return false;
       next.usableLengthMm = Math.round(cm * 10);
       next.lengthClass = formatLengthClass(next.usableLengthMm);
     }
+    if (Object.prototype.hasOwnProperty.call(patch, "note")) next.note = String(patch.note || "").trim();
 
     next.editedAt = new Date().toISOString();
     entries[index] = next;
     writeEntries(entries);
-    render();
+    refreshViews();
     setStatus(`Ändrad: ${next.dimension}, ${next.lengthClass}.`);
     return true;
   }
@@ -330,7 +332,7 @@
     if (global.confirm && !global.confirm(`Ta bort ${entry.dimension || "bit"}, ${entry.lengthClass || "okänd längd"}?`)) return false;
     entries.splice(index, 1);
     writeEntries(entries);
-    render();
+    refreshViews();
     setStatus("Raden borttagen.");
     return true;
   }
@@ -341,25 +343,25 @@
       <h3>Summering</h3>
       <table class="productionTable productionSummaryTable">
         <thead><tr><th>Dimension</th><th>Längdklass</th><th>Antal</th></tr></thead>
-        <tbody>
-          ${rows.map(row => `<tr><td>${escapeHtml(row.dimension)}</td><td>${escapeHtml(row.lengthClass)}</td><td><strong>${row.count}</strong></td></tr>`).join("")}
-        </tbody>
+        <tbody>${rows.map(row => `<tr><td>${escapeHtml(row.dimension)}</td><td>${escapeHtml(row.lengthClass)}</td><td><strong>${row.count}</strong></td></tr>`).join("")}</tbody>
       </table>
     `;
   }
 
   function renderEntryTable(entries) {
-    if (!entries.length) return "";
+    if (!entries.length) return `<div class="status-bad">Inga sågade bitar att redigera ännu.</div>`;
     return `
       <h3>Redigera sågade bitar</h3>
       <table class="productionTable productionEditTable">
-        <thead><tr><th>#</th><th>Dimension</th><th>Längd</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Dimension</th><th>Längd</th><th>Typ</th><th>Kommentar</th><th></th></tr></thead>
         <tbody>
           ${entries.map((entry, index) => `
             <tr>
               <td>${index + 1}</td>
               <td><input class="productionDimensionInput" data-entry-index="${index}" value="${escapeHtml(entry.dimension || "")}" aria-label="Dimension för rad ${index + 1}"></td>
               <td><input class="productionLengthInput" data-entry-index="${index}" type="number" inputmode="decimal" step="1" value="${escapeHtml(lengthCmForEntry(entry))}" aria-label="Längd i centimeter för rad ${index + 1}"><span class="productionUnit">cm</span></td>
+              <td>${entry.productKind === "free" ? "Frisågning" : "Sågplan"}</td>
+              <td><input class="productionNoteInput" data-entry-index="${index}" value="${escapeHtml(entry.note || "")}" aria-label="Kommentar för rad ${index + 1}"></td>
               <td><button class="productionDelete secondary" type="button" data-entry-index="${index}">Ta bort</button></td>
             </tr>
           `).join("")}
@@ -372,34 +374,24 @@
     el.querySelectorAll(".productionDimensionInput").forEach((input) => {
       const apply = () => updateEntry(Number(input.dataset.entryIndex), { dimension: input.value });
       input.addEventListener("change", apply);
-      input.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        input.blur();
-        apply();
-      });
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); input.blur(); apply(); } });
     });
-
     el.querySelectorAll(".productionLengthInput").forEach((input) => {
       const apply = () => updateEntry(Number(input.dataset.entryIndex), { lengthCm: input.value });
       input.addEventListener("change", apply);
-      input.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        input.blur();
-        apply();
-      });
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); input.blur(); apply(); } });
     });
-
-    el.querySelectorAll(".productionDelete").forEach((button) => {
-      button.onclick = () => deleteEntry(Number(button.dataset.entryIndex));
+    el.querySelectorAll(".productionNoteInput").forEach((input) => {
+      const apply = () => updateEntry(Number(input.dataset.entryIndex), { note: input.value });
+      input.addEventListener("change", apply);
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); input.blur(); apply(); } });
     });
+    el.querySelectorAll(".productionDelete").forEach((button) => { button.onclick = () => deleteEntry(Number(button.dataset.entryIndex)); });
   }
 
   function render(target) {
     const el = target || $("sideYield");
     if (!el) return false;
-    const entries = readEntries();
     const rows = summaryRows();
     const product = currentProduct();
     el.innerHTML = `
@@ -411,32 +403,42 @@
         </div>
         <div id="productionLogStatus" class="hint">${product ? `Färdig bit: ${escapeHtml(product.dimension)}, ${escapeHtml(product.lengthClass)}.` : escapeHtml(pendingProductText())}</div>
         ${renderSummaryTable(rows)}
-        ${renderEntryTable(entries)}
-      </div>
-    `;
+      </div>`;
 
     const accept = $("productionAccept");
     const skip = $("productionSkip");
     const clear = $("productionClear");
     if (accept) accept.onclick = () => addCurrentProduct();
     if (skip) skip.onclick = () => skipCurrentProduct();
-    if (clear) clear.onclick = () => {
-      if (global.confirm && !global.confirm("Nollställa produktionsloggen?")) return;
-      writeEntries([]);
-      render();
-    };
-    installEditHandlers(el);
+    if (clear) clear.onclick = () => { if (global.confirm && !global.confirm("Nollställa produktionsloggen?")) return; writeEntries([]); refreshViews(); };
     updateWorkScreenButtons();
     return true;
   }
 
+  function renderEditor(target) {
+    const el = target || $("productionEditHost");
+    if (!el) return false;
+    const entries = readEntries();
+    const rows = summaryRows();
+    el.innerHTML = `
+      <div class="productionLog productionLog-editor">
+        <div id="productionEditStatus" class="hint">Ändra dimension, längd eller kommentar på enskilda sågade bitar.</div>
+        ${renderSummaryTable(rows)}
+        ${renderEntryTable(entries)}
+      </div>`;
+    installEditHandlers(el);
+    return true;
+  }
+
+  function refreshViews() {
+    render($("sideYield"));
+    renderEditor($("productionEditHost"));
+    if (global.SawFreeSaw && typeof global.SawFreeSaw.render === "function") global.SawFreeSaw.render();
+  }
+
   function installYieldReplacement() {
-    global.renderSideYield = function renderProductionInsteadOfSideYield() {
-      return render();
-    };
-    global.renderPackingResult = function renderProductionInsteadOfPackingResult() {
-      return render();
-    };
+    global.renderSideYield = function renderProductionInsteadOfSideYield() { return render(); };
+    global.renderPackingResult = function renderProductionInsteadOfPackingResult() { return render(); };
   }
 
   function updateWorkScreenButtons() {
@@ -461,14 +463,10 @@
     const controls = global.document.createElement("div");
     controls.id = "bigProductionControls";
     controls.className = "bigProductionControls";
-    controls.innerHTML = `
-      <button id="bigProductionAccept" type="button">Godkänn + nästa</button>
-      <button id="bigProductionSkip" type="button" class="secondary">Kassera + nästa</button>
-    `;
+    controls.innerHTML = `<button id="bigProductionAccept" type="button">Godkänn + nästa</button><button id="bigProductionSkip" type="button" class="secondary">Kassera + nästa</button>`;
     const nav = panel.querySelector(".bigControls");
     if (nav) panel.insertBefore(controls, nav);
     else panel.appendChild(controls);
-
     const accept = $("bigProductionAccept");
     const skip = $("bigProductionSkip");
     if (accept) accept.onclick = () => addCurrentProduct();
@@ -478,15 +476,20 @@
 
   global.SawProductionLog = {
     addCurrentProduct,
+    addManualEntry,
     skipCurrentProduct,
     render,
+    renderEditor,
+    refreshViews,
     readEntries,
+    summaryRows,
     updateEntry,
     deleteEntry,
     currentProduct,
-    clear: () => writeEntries([]),
+    clear: () => { writeEntries([]); refreshViews(); },
   };
 
   installYieldReplacement();
   installWorkScreenControls();
+  renderEditor();
 })(window);
