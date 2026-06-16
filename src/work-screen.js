@@ -33,6 +33,13 @@
     return Number.isInteger(cm) ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`;
   }
 
+  function cmValueForInput(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "";
+    const cm = number / 10;
+    return Number.isInteger(cm) ? String(cm.toFixed(0)) : String(Number(cm.toFixed(1)));
+  }
+
   function currentContext() {
     if (global.SawUpdatePipeline && typeof global.SawUpdatePipeline.buildPlanContext === "function") {
       return global.SawUpdatePipeline.buildPlanContext();
@@ -78,6 +85,25 @@
     return value >= min && value <= max ? "ok" : "warn";
   }
 
+  function setMeasuredFieldFromWorkScreen(fieldId, valueCm) {
+    const source = $(fieldId);
+    if (!source) return false;
+
+    if (valueCm === "" || valueCm === null || typeof valueCm === "undefined") {
+      source.value = "";
+    } else {
+      const number = Number(String(valueCm).replace(",", "."));
+      if (!Number.isFinite(number)) return false;
+      source.value = String(Math.round(number * 10));
+    }
+
+    source.dispatchEvent(new global.Event("input", { bubbles: true }));
+    source.dispatchEvent(new global.Event("change", { bubbles: true }));
+    if (global.SawState && typeof global.SawState.resetCurrentStepIndex === "function") global.SawState.resetCurrentStepIndex();
+    if (typeof global.update === "function") global.update();
+    return true;
+  }
+
   function renderMeasuredData() {
     const target = $("bigMeasuredData");
     if (!target) return false;
@@ -94,16 +120,28 @@
     target.innerHTML = rows.map(([id, label]) => {
       const value = numberFromInput(id);
       const status = measureStatus(id, value);
-      const displayValue = value === null ? "–" : formatCm(value);
+      const inputValue = value === null ? "" : cmValueForInput(value);
       const note = status === "warn" ? "Kontrollera" : status === "ok" ? "OK" : "Ej angivet";
       return `
         <div class="measureRow measure-${status}">
           <span>${label}</span>
-          <strong>${displayValue}</strong>
+          <input class="measureInput" data-measure-field="${id}" type="number" inputmode="decimal" step="0.1" value="${inputValue}" aria-label="${label} i centimeter">
+          <strong>cm</strong>
           <em>${note}</em>
         </div>
       `;
     }).join("");
+
+    target.querySelectorAll(".measureInput").forEach((input) => {
+      const apply = () => setMeasuredFieldFromWorkScreen(input.dataset.measureField, input.value);
+      input.addEventListener("change", apply);
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        input.blur();
+        apply();
+      });
+    });
 
     return true;
   }
