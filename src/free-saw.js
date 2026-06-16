@@ -30,6 +30,33 @@
     return Number.isInteger(cm) ? String(cm.toFixed(0)) : String(Number(cm.toFixed(1)));
   }
 
+  function spokenLength(cmValue) {
+    const cm = Number(String(cmValue || "").replace(",", "."));
+    if (!Number.isFinite(cm) || cm <= 0) return "okänd längd";
+    const metres = Math.floor(cm / 100);
+    const rest = Math.round(cm - metres * 100);
+    if (metres > 0 && rest > 0) return `${metres} meter ${rest}`;
+    if (metres > 0) return `${metres} meter`;
+    return `${Math.round(cm)} centimeter`;
+  }
+
+  function speak(text) {
+    if (global.SawVoiceSpeechFeedback && typeof global.SawVoiceSpeechFeedback.speak === "function") {
+      return global.SawVoiceSpeechFeedback.speak(text, { rate: 1.02 });
+    }
+    if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return false;
+    try {
+      global.speechSynthesis.cancel();
+      const utterance = new global.SpeechSynthesisUtterance(text);
+      utterance.lang = "sv-SE";
+      utterance.rate = 1.02;
+      global.speechSynthesis.speak(utterance);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function setStatus(message, kind) {
     const status = $("freeSawStatus");
     if (!status) return;
@@ -59,6 +86,16 @@
       .replace(/^\w/, (char) => char.toUpperCase());
   }
 
+  function isWildPanel(text) {
+    return /vildmarkspanel|vildmarks\s*panel|vildmark/.test(normalizeText(text));
+  }
+
+  function cleanCommandPrefix(text) {
+    return normalizeText(text)
+      .replace(/^(registrera|spara|sagat|sågat|korrigera|andra|ändra)\s+/, "")
+      .trim();
+  }
+
   function parseLengthCm(text) {
     const normalized = normalizeText(text);
     const lengthMatch = normalized.match(/(?:langd|längd)\s+(\d+(?:\.\d+)?)(?:\s*(meter|centimeter|millimeter))?/);
@@ -72,6 +109,7 @@
       if (!Number.isFinite(value)) return "";
       if (unit === "meter") return String(Math.round(value * 100));
       if (unit === "millimeter") return String(Math.round(value / 10));
+      if (value > 0 && value < 20 && String(lengthMatch[1]).includes(".")) return String(Math.round(value * 100));
       return String(Math.round(value));
     }
     if (directMeter) return String(Math.round(Number(directMeter[1]) * 100));
@@ -83,12 +121,15 @@
   function parseDimension(text) {
     const normalized = normalizeText(text);
     const size = normalized.match(/\b(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\b/);
-    if (size) return `${Number(size[1]).toString()}×${Number(size[2]).toString()}`;
+    if (size) {
+      const base = `${Number(size[1]).toString()}×${Number(size[2]).toString()}`;
+      return isWildPanel(text) ? `${base} vildmarkspanel` : base;
+    }
 
-    const beforeLength = normalized.split(/\b(?:langd|längd)\b/)[0]
-      .replace(/^registrera\s+/, "")
-      .replace(/^sagat\s+/, "")
-      .replace(/^sågat\s+/, "")
+    if (isWildPanel(text)) return "Vildmarkspanel";
+
+    const beforeLength = cleanCommandPrefix(text).split(/\b(?:langd|längd)\b/)[0]
+      .replace(/\b(kommentar|notering)\b.*$/, "")
       .trim();
     if (beforeLength && !/^\d+(?:\.\d+)?$/.test(beforeLength)) return displayText(beforeLength);
     return "";
@@ -98,7 +139,7 @@
     const normalized = normalizeText(text);
     const noteMatch = normalized.match(/(?:kommentar|notering)\s+(.+)$/);
     if (noteMatch) return displayText(noteMatch[1]);
-    if (/vildmarkspanel/.test(normalized) && dimension && !/vildmarkspanel/i.test(dimension)) return "Vildmarkspanel";
+    if (isWildPanel(text) && dimension && !/vildmarkspanel/i.test(dimension)) return "Vildmarkspanel";
     return "";
   }
 
@@ -106,7 +147,7 @@
     const lengthCm = parseLengthCm(rawText);
     const dimension = parseDimension(rawText);
     const note = parseNote(rawText, dimension, lengthCm);
-    if (!dimension && !lengthCm) return null;
+    if (!dimension && !lengthCm && !note) return null;
     return { dimension, lengthCm, note, rawText };
   }
 
@@ -122,7 +163,37 @@
     const hasValues = dim && dim.value && len && len.value;
     if (autoRegister && hasValues) return addFromForm();
     setStatus(`Tolkade: ${dim && dim.value ? dim.value : "dimension saknas"}, ${len && len.value ? len.value + " cm" : "längd saknas"}. Tryck Registrera eller säg “registrera …”.`, "ok");
+    if (hasValues) speak(`Tolkade ${dim.value}, längd ${spokenLength(len.value)}.`);
     return !!hasValues || !!parsed.dimension || !!parsed.lengthCm;
+  }
+
+  function correctLatest(parsed) {
+    if (!parsed) return false;
+    const latest = latestEntry();
+    if (!latest || !global.SawProductionLog || typeof global.SawProductionLog.updateEntry !== "function") {
+      setStatus("Det finns ingen registrerad bit att korrigera.", "warn");
+      speak("Det finns ingen registrerad bit att korrigera.");
+      return false;
+    }
+    const patch = {};
+    if (parsed.dimension) patch.dimension = parsed.dimension;
+    if (parsed.lengthCm) patch.lengthCm = parsed.lengthCm;
+    if (parsed.note) patch.note = parsed.note;
+    if (!Object.keys(patch).length) {
+      setStatus("Säg vad som ska korrigeras, till exempel “korrigera längd 430”.", "warn");
+      return false;
+    }
+    const ok = global.SawProductionLog.updateEntry(latest.index, patch);
+    if (ok) {
+      const updated = latestEntry();
+      const entry = updated && updated.entry ? updated.entry : { ...latest.entry, ...patch };
+      const cm = lengthCmForEntry(entry) || parsed.lengthCm;
+      const message = `Korrigerad: ${entry.dimension}, längd ${cm} cm.`;
+      setStatus(message, "ok");
+      speak(`Korrigerad ${entry.dimension}, längd ${spokenLength(cm)}.`);
+      render();
+    }
+    return ok;
   }
 
   function recognitionCtor() {
@@ -151,7 +222,7 @@
     instance.onstart = () => {
       listening = true;
       updateVoiceButton();
-      setStatus("Lyssnar… säg t.ex. “registrera 18 gånger 18 längd 420” eller “vildmarkspanel längd 420”.", "listening");
+      setStatus("Lyssnar… säg t.ex. “registrera 18 gånger 18 längd 420”, “vildmarkspanel längd 420” eller “korrigera längd 430”.", "listening");
     };
     instance.onend = () => {
       listening = false;
@@ -169,10 +240,12 @@
         const alternatives = Array.from(result).map((item) => item.transcript);
         const applied = alternatives.some((alternative) => {
           const normalized = normalizeText(alternative);
+          const isCorrection = /^(korrigera|andra|ändra)\b/.test(normalized);
+          if (isCorrection) return correctLatest(parseFreeSawSpeech(alternative));
           const autoRegister = /^registrera\b|^spara\b|^sagat\b|^sågat\b/.test(normalized);
           return applyParsedSpeech(parseFreeSawSpeech(alternative), autoRegister);
         });
-        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “registrera 18 gånger 18 längd 420”.`, "warn");
+        if (!applied && alternatives.length) setStatus(`Jag hörde: “${alternatives[0]}”. Säg t.ex. “registrera 18 gånger 18 längd 420” eller “korrigera längd 430”.`, "warn");
       }
     };
     return instance;
@@ -183,6 +256,7 @@
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
       return;
     }
+    if (global.SawVoiceRoute && typeof global.SawVoiceRoute.primeHeadset === "function") global.SawVoiceRoute.primeHeadset();
     if (!recognition) recognition = createRecognition();
     if (!recognition || listening) return;
     try {
@@ -221,11 +295,13 @@
     `;
     const save = $("freeSawLatestSave");
     if (save) save.onclick = () => {
+      const cm = $("freeSawLatestLength").value;
       global.SawProductionLog.updateEntry(index, {
         dimension: $("freeSawLatestDimension").value,
-        lengthCm: $("freeSawLatestLength").value,
+        lengthCm: cm,
         note: $("freeSawLatestNote").value,
       });
+      speak(`Sparad ändring, längd ${spokenLength(cm)}.`);
     };
     return true;
   }
@@ -263,6 +339,7 @@
       const noteInput = $("freeSawNote");
       if (noteInput) noteInput.value = "";
       render();
+      speak(`Registrerad ${dimension}, längd ${spokenLength(lengthCm)}.`);
     }
     return ok;
   }
@@ -293,7 +370,7 @@
     render();
   }
 
-  global.SawFreeSaw = { install, render, addFromForm, parseFreeSawSpeech, startVoice, stopVoice, toggleVoice };
+  global.SawFreeSaw = { install, render, addFromForm, correctLatest, parseFreeSawSpeech, startVoice, stopVoice, toggleVoice, isListening: () => listening };
 
   if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", install);
   else install();
