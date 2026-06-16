@@ -83,7 +83,8 @@
     "src/voice-input.js",
     "src/voice-feedback.js",
     "src/voice-speech-settings.js",
-    "src/voice-speech-feedback.js"
+    "src/voice-speech-feedback.js",
+    "fix-v42.js"
   ];
 
   function withBuildVersion(src) {
