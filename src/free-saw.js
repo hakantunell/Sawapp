@@ -223,15 +223,19 @@
       listening = true;
       updateVoiceButton();
       setStatus("Lyssnar… säg t.ex. “registrera 18 gånger 18 längd 420”, “vildmarkspanel längd 420” eller “korrigera längd 430”.", "listening");
+      speak("Frisågning lyssnar.");
     };
     instance.onend = () => {
       listening = false;
       updateVoiceButton();
+      setStatus("Röstinmatning stoppad.", "");
     };
     instance.onerror = (event) => {
       listening = false;
       updateVoiceButton();
-      setStatus(`Röstfel: ${event.error || "okänt fel"}.`, "warn");
+      const errorText = event.error || "okänt fel";
+      setStatus(`Röstfel: ${errorText}.`, "warn");
+      speak(`Röstfel. ${errorText}.`);
     };
     instance.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
@@ -254,20 +258,35 @@
   function startVoice() {
     if (!supportsSpeechRecognition()) {
       setStatus("Röstinmatning stöds inte i den här webbläsaren. Prova Chrome eller Edge.", "warn");
+      speak("Röstinmatning stöds inte i den här webbläsaren.");
       return;
     }
     if (global.SawVoiceRoute && typeof global.SawVoiceRoute.primeHeadset === "function") global.SawVoiceRoute.primeHeadset();
     if (!recognition) recognition = createRecognition();
-    if (!recognition || listening) return;
+    if (!recognition) {
+      setStatus("Kunde inte skapa röstinmatning.", "warn");
+      return;
+    }
+    if (listening) {
+      setStatus("Frisågning lyssnar redan.", "listening");
+      return;
+    }
+    setStatus("Startar röstinmatning…", "listening");
     try {
       recognition.start();
     } catch (error) {
       setStatus(`Kunde inte starta röstinmatning: ${error.message}`, "warn");
+      speak("Kunde inte starta röstinmatning.");
     }
   }
 
   function stopVoice() {
-    if (recognition && listening) recognition.stop();
+    if (recognition && listening) {
+      setStatus("Stoppar röstinmatning…", "");
+      recognition.stop();
+    } else {
+      setStatus("Röstinmatningen är redan stoppad.", "");
+    }
   }
 
   function toggleVoice() {
