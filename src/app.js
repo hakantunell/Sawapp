@@ -2,7 +2,7 @@
 // Bootstrap för refaktoreringen.
 
 (function bootstrapSawapp() {
-  const APP_BUILD = "1.2.14";
+  const APP_BUILD = "1.2.15";
   const scripts = [
     "src/version.js",
     "src/format.js",
@@ -86,7 +86,8 @@
     "src/voice-speech-settings.js",
     "src/voice-speech-feedback.js",
     "fix-v42.js",
-    "fix-v43.js"
+    "fix-v43.js",
+    "fix-v44.js"
   ];
 
   function withBuildVersion(src) {
