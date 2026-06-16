@@ -15,7 +15,9 @@
   color:#0f172a;
 }
 .bigMeasuredData .measureInput:focus,
-.productionEditTable input:focus{
+.productionEditTable input:focus,
+.freeSawForm input:focus,
+.freeSawLatestCard input:focus{
   outline:2px solid #0f62fe;
   outline-offset:1px;
 }
@@ -23,7 +25,8 @@
   font-size:.85rem;
   color:#475569;
 }
-.productionLog h3{
+.productionLog h3,
+#freeSawTab h3{
   margin:.9rem 0 .35rem;
   font-size:.95rem;
   color:#334155;
@@ -55,6 +58,40 @@
 }
 .productionSummaryTable strong{
   font-size:1rem;
+}
+.freeSawForm{
+  align-items:end;
+  margin:8px 0 12px;
+}
+.freeSawButtonWrap{
+  display:flex;
+  align-items:end;
+  min-height:48px;
+}
+.freeSawButtonWrap button{
+  width:100%;
+}
+.freeSawLatestCard{
+  display:grid;
+  grid-template-columns:1.2fr .7fr 1.3fr auto;
+  gap:10px;
+  align-items:end;
+  border:1px solid #cbd5e1;
+  background:#f8fafc;
+  border-radius:14px;
+  padding:12px;
+  margin:8px 0 14px;
+}
+.freeSawLatestCard label{
+  margin-bottom:0;
+}
+.freeSawLatestCard button{
+  white-space:nowrap;
+}
+@media(max-width:800px){
+  .freeSawLatestCard{
+    grid-template-columns:1fr;
+  }
 }
 @media(max-width:430px){
   .bigMeasuredData .measureRow{
