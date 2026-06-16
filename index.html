@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sawapp v1.2.5</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="saw-screen-overrides.css"><link rel="stylesheet" href="work-screen-editable.css"><link rel="stylesheet" href="compact-1366.css"><link rel="stylesheet" href="mobile.css"></head>
+<title>Sawapp v1.2.6</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="saw-screen-overrides.css"><link rel="stylesheet" href="work-screen-editable.css"><link rel="stylesheet" href="compact-1366.css"><link rel="stylesheet" href="mobile.css"></head>
 <body>
 <nav class="tabs">
-<button class="tab" data-tab="settingsTab">Inställningar</button><button class="tab" data-tab="dimensionsTab">Dimensioner</button><button class="tab" data-tab="stockTab">Stockprofil</button><button class="tab" data-tab="planTab">Sågplan</button><button class="tab active" data-tab="bigTab">Sågskärm</button><div class="navBrand"><strong>Sawapp</strong><span>v1.2.5</span></div>
+<button class="tab" data-tab="settingsTab">Inställningar</button><button class="tab" data-tab="dimensionsTab">Dimensioner</button><button class="tab" data-tab="stockTab">Stockprofil</button><button class="tab" data-tab="planTab">Sågplan</button><button class="tab active" data-tab="bigTab">Sågskärm</button><button class="tab" data-tab="editLogTab">Redigera sågning</button><button class="tab" data-tab="freeSawTab">Frisågning</button><div class="navBrand"><strong>Sawapp</strong><span>v1.2.6</span></div>
 </nav>
 <main class="tabLayout">
 <section id="stockTab" class="tabPage"><div class="twoCol">
@@ -47,6 +47,8 @@
 </section>
 <button id="openBigScreen" class="hidden">Visa</button><div id="bigScreen" class="hidden"></div>
 </section>
+<section id="editLogTab" class="tabPage"><section class="panel widePanel"><h2>Redigera sågning</h2><p class="hint">Här ändrar du redan registrerade/sågade bitar. Summeringen räknas om automatiskt.</p><div id="productionEditHost"></div></section></section>
+<section id="freeSawTab" class="tabPage"><section class="panel widePanel"><h2>Frisågning</h2><p class="hint">Använd när du inte vill beräkna en stock, utan bara registrera vad det faktiskt blev.</p><div class="freeSawForm grid2"><label>Dimension <input id="freeSawDimension" type="text" placeholder="t.ex. 18×18 eller vildmarkspanel"><span>Det du vill se i totalen</span></label><label>Längd <input id="freeSawLength" type="number" inputmode="decimal" step="1" placeholder="420"><span>cm, t.ex. 420 för 4,20 m</span></label><label>Kommentar <input id="freeSawNote" type="text" placeholder="valfritt"><span>t.ex. vildmarkspanel</span></label><div class="freeSawButtonWrap"><button id="freeSawAdd" type="button">Registrera frisågning</button></div></div><div id="freeSawStatus" class="hint">Ange dimension och längd och tryck registrera.</div><div id="freeSawLatest"></div><div id="freeSawTotals"></div></section></section>
 <section id="settingsTab" class="tabPage"><section class="panel settingsPanel"><h2>Inställningar för såg</h2><p class="hint">Värden som normalt inte ändras för varje stock.</p><div class="grid2">
 <label>Sågmodell <select id="sawModel"><option value="logosol-m7">Logosol M7 / liknande</option><option value="custom">Egen såg</option></select><span>framtida standardvärden</span></label>
 <label>Stödavstånd <input id="supportDistance" type="number" value="2500" step="10"><span>mm</span></label>
@@ -60,5 +62,5 @@
 <label>Optimera för <select id="optimizationMode"><option value="timber">Timmerblock</option><option value="plank">Plank / fri bredd</option><option value="panel">Panel / minbredd</option><option value="mixed">Blandat enligt prioritet</option><option value="sawmill">Sågverk / packning</option></select></label>
 </div></section></section>
 </main><footer>Alla mått i millimeter. Tum = mm / 25,4.</footer>
-<script src="src/app.js?v=1.2.5"></script>
+<script src="src/app.js?v=1.2.6"></script>
 </body></html>
